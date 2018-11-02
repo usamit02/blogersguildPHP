@@ -17,37 +17,40 @@ if (isset($referer)) {
           $json['error']="pay.jpの初期化に失敗しました。";
         }    
         $r=$db->query("SELECT id FROM t02user WHERE id='$userId';")->fetch();
-        if($r){
-            $payjpId=$r['payjp_id'];
-        }else{
-            try{
-                $result = Payjp\Customer::create(array("card"=>$token,"id"=>$userId,"description"=>$userName));
-            } catch (Exception $e) {
-                //$json['msg']=$e['message'];
-            }
-            if(isset($result['id'])){
-                $payjpId=$result['id'];
-                $ps=$db->prepare("INSERT INTO t02user(id,na,payjp_id) VALUES (:id,:na,:payjp);");
-                //$ps=$db->prepare("INSERT INTO t02user(id,na,payjp_id) VALUES (:id,:na,:payjp) ON DUPLICATE KEY UPDATE na=VALUES('na'),payjp_id=VALUES('payjp');");
-                if (!$ps->execute(array("id" =>$userId,"na"=>$userName,"payjp"=>$payjpId))) {
-                    $json['error']="データベースエラーによりユーザーの追加に失敗しました。";
-                    $customer = \Payjp\Customer::retrieve($payjpId);
-                    $customer->delete();
-                }
-            }else{
-                $json['error']="pay.jpの顧客作成に失敗しました。";
+        if(!$r){
+            $ps=$db->prepare("INSERT INTO t02user(id,na) VALUES (:id,:na);");
+            if (!$ps->execute(array("id" =>$userId,"na"=>$userName))) {
+                $json['error']="データベースエラーによりユーザーの追加に失敗しました。";
             }
         }
-        if(isset($payjpId)&&!isset($json)){
+        if(!isset($json)){
             try{
-              $result=Payjp\Subscription::create(array("customer"=>$payjpId,"plan"=>"room".$room));
+                $result = Payjp\Customer::retrieve($userId);
             } catch (Exception $e) {
-                //$json['msg']=$e['message'];
-                $json['error']="payjpの定額課金に失敗しました。";
+              
+            }
+            if(!isset($result['id'])){
+                try{
+                    $result = Payjp\Customer::create(array("card"=>$token,"id"=>$userId,"description"=>$userName));
+                } catch (Exception $e) {
+                    $json['error']= $e->getMessage();
+                }
+                if(isset($result['id'])){
+                     $userId=$result['id'];
+                }else{
+                     $json['error']="pay.jpの顧客作成に失敗しました。";
+                }
+            }
+        }
+        if(!isset($json)){
+            try{
+              $result=Payjp\Subscription::create(array("customer"=>$userId,"plan"=>"room$room"));
+            } catch (Exception $e) {
+                $json['error']="payjpの定額課金に失敗しました。\r\n". $e->getMessage();
             }            
             if (isset($result['id'])) {
                 $ps=$db->prepare("INSERT INTO t11roompay(uid,rid,start_day,payjp_id) VALUES (?,?,?,?)");
-                if ($ps->execute(array($userId,$room,date('Y-m-d H:i:s'),$payjpId))) {
+                if ($ps->execute(array($userId,$room,date('Y-m-d H:i:s'),$result['id']))) {
                     $json['msg']="ok";
                 }else{
                     $json['error']="データベースエラーによりルーム支払データ挿入に失敗しました。";
