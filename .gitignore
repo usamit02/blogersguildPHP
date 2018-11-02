@@ -58,5 +58,5 @@ public_html/pay/payjp/tests/TransferTest.php
 public_html/pay/payjp/tests/UtilTest.php
 public_html/pay/payjp/tests/bootstrap.php
 public_html/pay/payjp/tests/bootstrap.no_autoload.php
-private_ini/mmysql.ini
+private_ini/mysql.ini
 private_ini/pay.ini
