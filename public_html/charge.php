@@ -9,6 +9,11 @@ if($r){
 }else{
   $json="{name:'該当なし'";
 }
+if($a==$b){
+    $f=0;
+}else{
+      $z=0;
+}
 header('Content-type: application/json');
 echo json_encode($json);
 ?>

@@ -49,7 +49,7 @@ if (isset($referer)) {
                 $json['error']="payjpの定額課金に失敗しました。\r\n". $e->getMessage();
             }            
             if (isset($result['id'])) {
-                $ps=$db->prepare("INSERT INTO t11roompay(uid,rid,start_day,payjp_id) VALUES (?,?,?,?)");
+                $ps=$db->prepare("INSERT INTO t11roompay(uid,rid,start_day,payjp_id) VALUES (?,?,?,?);");
                 if ($ps->execute(array($userId,$room,date('Y-m-d H:i:s'),$result['id']))) {
                     $json['msg']="ok";
                 }else{
