@@ -1,0 +1,22 @@
+<script src='https://cloud.tinymce.com/stable/tinymce.min.js'></script>
+<script src='https://code.jquery.com/jquery-3.3.1.js'></script>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script type="text/javascript">
+  tinymce.init({
+    selector: "textarea",
+    plugins: "contextmenu preview code",
+    contextmenu: "myitem | code preview",
+    setup: function (editor) {
+      editor.addMenuItem('myitem', {
+        text: 'My Content',
+        onclick: function () {
+          editor.insertContent('Hello World');
+        }
+      });
+    }
+  });
+</script>
+<form method="post" action="dump.php">
+  <textarea name="content"></textarea>
+</form>
+<blockquote class="twitter-tweet" data-conversation="none"><a href="https://twitter.com/sekainomakita55/status/1073062280277909504"></a></blockquote>

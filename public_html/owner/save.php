@@ -72,12 +72,14 @@ if (isset($_GET['sql'])) {
                 $res['msg'] = 'pay.jpの初期化に失敗しました。';
             }
             if (!isset($res)) {
-                $plan = array('amount' => $data['plan']['amount'], 'currency' => 'jpy', 'interval' => 'month');
+                $plan = array('id' => $planId, 'amount' => $data['plan']['amount'], 'currency' => 'jpy', 'interval' => 'month');
                 if ($data['plan']['billing_day']) {
                     $plan += array('billing_day' => $data['plan']['billing_day']);
                 }
-                if ($data['plan']['trial_days']) {
-                    $plan += array('trial_days' => $data['plan']['trial_days']);
+                if ($data['plan']['trial_days'] || $data['plan']['auth_days']) {
+                    $trial_days = isset($data['plan']['trial_days']) ? $data['plan']['trial_days'] : 0;
+                    $trial_days += isset($data['plan']['auth_days']) ? $data['plan']['auth_days'] : 0;
+                    $plan += array('trial_days' => $trial_days);
                 }
                 try {
                     $result = Payjp\Plan::create($plan);

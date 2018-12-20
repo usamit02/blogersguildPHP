@@ -1,0 +1,38 @@
+<script src="http://code.jquery.com/jquery-1.11.0.min.js"></script>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+<script>
+  $(document).ready(function () {
+    $("#getTweet").on("click", function (e) {
+      e.preventDefault();
+
+      $.ajax({
+        url: "searchtweet.php",
+        type: "POST",
+        dataType: "json",
+        data: {
+          keyword: $("#keyword").val()
+        },
+        beforeSend: function () {
+          $("#tweet").empty();
+        },
+        success: function (result) {
+          var data = "";
+
+          if (result) {
+            for (var i in result) {
+              data += '<blockquote class="twitter-tweet" data-conversation="none"><a href="https://twitter.com/twitterapi/status/' + result[i] + '"></a></blockquote>';
+            }
+          }
+
+          $("#tweet").append(data);
+        },
+        complete: function (result) {
+          twttr.widgets.load();
+        }
+      });
+    });
+  });
+</script>
+<input type="text" id="keyword">
+<input type="button" id="getTweet" value="取得する">
+<div id="tweet"></div>

@@ -1,0 +1,253 @@
+<html>
+
+<head>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+  <style>
+    .progressBar {
+      width: 200px;
+      height: 22px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      overflow: hidden;
+      display: inline-block;
+      margin: 0px 10px 5px 5px;
+      vertical-align: top;
+    }
+
+    .progressBar div {
+      height: 100%;
+      color: #fff;
+      text-align: right;
+      line-height: 22px;
+      /* same as #progressBar height if we want text middle aligned */
+      width: 0;
+      background-color: #0ba1b5;
+      border-radius: 3px;
+    }
+
+    .statusbar {
+      border-top: 1px solid #A9CCD1;
+      min-height: 25px;
+      width: 700px;
+      padding: 10px 10px 0px 10px;
+      vertical-align: top;
+    }
+
+    .statusbar:nth-child(odd) {
+      background: #EBEFF0;
+    }
+
+    .filename {
+      display: inline-block;
+      vertical-align: top;
+      width: 250px;
+    }
+
+    .filesize {
+      display: inline-block;
+      vertical-align: top;
+      color: #30693D;
+      width: 100px;
+      margin-left: 10px;
+      margin-right: 5px;
+    }
+
+    .abort {
+      background-color: #A8352F;
+      -moz-border-radius: 4px;
+      -webkit-border-radius: 4px;
+      border-radius: 4px;
+      display: inline-block;
+      color: #fff;
+      font-family: arial;
+      font-size: 13px;
+      font-weight: normal;
+      padding: 4px 15px;
+      cursor: pointer;
+      vertical-align: top
+    }
+    </style>
+</head>
+
+<body>
+  <div id="media1" class="media" style="min-width: 300px;min-height:50px;border:2px dotted;">
+    <p>ここにファイルをドロップ</p>
+  </div>
+  <input type="file" accept="image/*">
+  <canvas style="display:none;"></canvas>
+  <script type="text/javascript">
+    function upload(files, media) {
+      if (!files.length) return;
+      if (files[0].type.match(/image.*/)) {
+        var canvas = document.querySelector('canvas');
+        var ctx = canvas.getContext('2d');
+        var status = new createStatusbar(media); //Using this we can set progress.
+        status.setFileNameSize(files[0].name, files[0].size);
+        var img = new Image();
+        var reader = new FileReader();
+        reader.onload = () => {
+          img.onload = () => {
+            let h = 480;
+            let w = img.width * (h / img.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.width = w; canvas.height = h;
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob(send, 'image/jpeg');
+          }
+          img.src = reader.result;
+        }
+        reader.readAsDataURL(files[0]);
+        var rowCount = 0;
+      } else {
+        alert("写真ファイルではありません。");
+      }
+
+      function send(blob) {
+        var rid = "1002";
+        var fd = new FormData();
+        fd.append('rid', rid);
+        fd.append('id', $(media).attr('id'));
+        fd.append('file', blob);
+        var jqXHR = $.ajax({
+          xhr: function () {
+            var xhrobj = $.ajaxSettings.xhr();
+            if (xhrobj.upload) {
+              xhrobj.upload.addEventListener('progress', function (event) {
+                var percent = 0;
+                var position = event.loaded || event.position;
+                var total = event.total;
+                if (event.lengthComputable) {
+                  percent = Math.ceil(position / total * 100);
+                }
+                status.setProgress(percent);
+              }, false);
+            }
+            return xhrobj;
+          },
+          url: "upload.php",
+          type: "POST",
+          contentType: false,
+          processData: false,
+          cache: false,
+          data: fd,
+          success: function (json) {
+            status.setProgress(100);
+            if (json.mdg = "ok") {
+              $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg?' + new Date().getTime() + '">');
+            } else {
+              alert(json.msg);
+            }
+          },
+          error: function (XMLHttpRequest, textStatus, errorThrown) {
+            alert("ajax通信に失敗しました。");
+          }
+        });
+
+
+        /*
+        $.ajax({
+          url: "upload.php",
+          type: 'POST',
+          data: fd,
+          processData: false,
+          contentType: false,
+          success: function (json, dataType) {
+            if (json.mdg = "ok") {
+              $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg?' + new Date().getTime() + '">');
+            } else {
+              alert(json.msg);
+            }
+          },
+          error: function (XMLHttpRequest, textStatus, errorThrown) {
+            alert("ajax通信に失敗しました。");
+          }
+        });
+          .done(function (data, textStatus, jqXHR) {
+            $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg">');
+          })
+          .fail(function (jqXHR, textStatus, error) {
+            console.error("error" + error.message);
+          });*/
+      }
+    }
+    var rowCount = 0;
+    function createStatusbar(obj) {
+      rowCount++;
+      var row = "odd";
+      if (rowCount % 2 == 0) row = "even";
+      this.statusbar = $("<div class='statusbar " + row + "'></div>");
+      this.filename = $("<div class='filename'></div>").appendTo(this.statusbar);
+      this.size = $("<div class='filesize'></div>").appendTo(this.statusbar);
+      this.progressBar = $("<div class='progressBar'><div></div></div>").appendTo(this.statusbar);
+      this.abort = $("<div class='abort'>Abort</div>").appendTo(this.statusbar);
+      $(obj).children().replaceWith(this.statusbar);
+
+      this.setFileNameSize = function (name, size) {
+        var sizeStr = "";
+        var sizeKB = size / 1024;
+        if (parseInt(sizeKB) > 1024) {
+          var sizeMB = sizeKB / 1024;
+          sizeStr = sizeMB.toFixed(2) + " MB";
+        }
+        else {
+          sizeStr = sizeKB.toFixed(2) + " KB";
+        }
+
+        this.filename.html(name);
+        this.size.html(sizeStr);
+      }
+      this.setProgress = function (progress) {
+        var progressBarWidth = progress * this.progressBar.width() / 100;
+        this.progressBar.find('div').animate({ width: progressBarWidth }, 10).html(progress + "% ");
+        if (parseInt(progress) >= 100) {
+          this.abort.hide();
+        }
+      }
+      this.setAbort = function (jqxhr) {
+        var sb = this.statusbar;
+        this.abort.click(function () {
+          jqxhr.abort();
+          sb.hide();
+        });
+      }
+    }
+    $(document).ready(function () {
+      console.log("ready");
+      $(document).on('dragenter', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      });
+      $(document).on('dragover', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        $(".media").css('border', '2px dotted #0B85A1');
+      });
+      $(document).on('drop', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      });
+      $(".media").on('dragenter', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        $(e.target).css('border', '2px solid #0B85A1');
+      });
+      $(".media").on('dragover', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+      });
+      $(".media").on('drop', (e) => {
+        $(e.target).css('border', '2px dotted #0B85A1');
+        e.preventDefault();
+        upload(e.originalEvent.dataTransfer.files, e.target);
+      });
+      $('input[type=file]').on('change', (e) => {
+        let a = $(e.target).prop('files');
+        let b = $(e.target).prevAll('.media');
+        upload(a, b);
+      });
+    });
+
+  </script>
+</body>
+
+</html>

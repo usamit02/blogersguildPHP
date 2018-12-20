@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+</head>
+
+<body>
+  <h1>TinyMCE Quick Start Guide</h1>
+  <div id="wrap">
+    <div class="content div_border" contenteditable="false">
+      World!
+    </div>
+  </div>
+  <div id="work"></div>
+  <blockquote class="twitter-tweet" data-conversation="none"><a href="https://twitter.com/sekainomakita55/status/1073062280277909504"></a></blockquote>
+  <script src='https://cloud.tinymce.com/stable/tinymce.min.js'></script>
+  <script src='https://code.jquery.com/jquery-3.3.1.js'></script>
+  <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+  <script>
+
+    $(document).ready(function () {
+      tinymce.PluginManager.add('twitter_url', function (editor, url) {
+        var icon_url = 'img/social/twitter.png';
+        editor.on('init', function (args) {
+          editor_id = args.target.id;
+        });
+        editor.addButton('twitter_url',
+          {
+            text: true,
+            icon: true,
+            image: icon_url,
+            onclick: function () {
+              editor.windowManager.open({
+                title: 'Twitter Embed',
+                body: [
+                  {
+                    type: 'textbox',
+                    size: 40,
+                    height: '100px',
+                    name: 'twitter',
+                    label: 'twitter'
+                  }
+                ],
+                onsubmit: function (e) {
+                  $.ajax({
+                    url: "https://publish.twitter.com/oembed?url=" + e.data.twitter,
+                    dataType: "jsonp",
+                    async: false,
+                    success: function (data) {
+                      // $("#embedCode").val(data.html);
+                      // $("#preview").html(data.html)
+                      tinyMCE.activeEditor.insertContent(
+                        '<div class="tweet" contenteditable="false">'
+                        + data.html +
+                        '</div>');
+                    },
+                    error: function (jqXHR, exception) {
+                      var msg = '';
+                      if (jqXHR.status === 0) {
+                        msg = 'Not connect.\n Verify Network.';
+                      } else if (jqXHR.status == 404) {
+                        msg = 'Requested page not found. [404]';
+                      } else if (jqXHR.status == 500) {
+                        msg = 'Internal Server Error [500].';
+                      } else if (exception === 'parsererror') {
+                        msg = 'Requested JSON parse failed.';
+                      } else if (exception === 'timeout') {
+                        msg = 'Time out error.';
+                      } else if (exception === 'abort') {
+                        msg = 'Ajax request aborted.';
+                      } else {
+                        msg = 'Uncaught Error.\n' + jqXHR.responseText;
+                      }
+                      alert(msg);
+                    },
+                    complete: function (result) {
+                      twttr.widgets.load();
+                    }
+                  });
+                }
+              });
+            }
+          });
+      });
+      tinymce.init({
+        selector: ".content",
+        inline: true,/*
+        height: 300,
+        theme: 'modern',*/
+        menubar: true,
+        plugins: 'preview code twitter_url',
+        toolbar: 'code preview twitter_url',
+
+        valid_elements: '+*[*]',
+
+        extended_valid_elements: "+iframe[width|height|name|align|class|frameborder|allowfullscreen|allow|src|*]," +
+          "script[language|type|async|src|charset]" +
+          "img[*]" +
+          "embed[width|height|name|flashvars|src|bgcolor|align|play|loop|quality|allowscriptaccess|type|pluginspage]" +
+          "blockquote[dir|style|cite|class|id|lang|onclick|ondblclick"
+          + "|onkeydown|onkeypress|onkeyup|onmousedown|onmousemove|onmouseout"
+          + "|onmouseover|onmouseup|title]",
+
+        content_css: ['css/main.css?' + new Date().getTime(),
+          '//fonts.googleapis.com/css?family=Lato:300,300i,400,400i',
+          '//www.tinymce.com/css/codepen.min.css'
+        ],
+        setup: function (editor) {
+          console.log(editor);
+          editor.on('init', function (e) {
+            editor_id = e.target.id;
+          });
+          editor.on('blur', function (e) {
+            let story = makeStory(editor);
+            console.log(story);
+          });
+        },
+      })
+      $('#wrap').append('<div class="content div_border" contenteditable="true">次は</div>');
+    });
+    function makeStory(editor) {
+      //var html = $('<div>' + editor.getContent({ format: "html" }) + "</div>");
+      //var html = $($.parseHTML(editor.getContent({ format: "html" })));
+      //html = makeHtml(html, editor, '<div class="tweet" contenteditable="false">&nbsp;</div>', 'twitter-widget');
+      var html = editor.getContent({ format: "html" });
+      var neohtml = editor.getContent({ format: "raw" });
+      $('#work').append(html);
+      $('#work').append(neohtml);
+      // html = makeHtml(html, editor, 'div.tweet', 'twitter-widget');
+      // let ret = $(html).children("div");
+      // return ret[0];
+    }
+    function makeHtml(html, editor, org, neo) {
+      let orgHtml = html.find(org);
+      if (orgHtml.length) {
+        let rawHtml = $($.parseHTML(editor.getContent({ format: "raw" })));
+        let neoHtml = rawHtml.find(neo);
+        if (neoHtml.length) {
+          $('#work').append(html);
+          $(org).replaceWith(neoHtml);
+          html = $('#work');
+          $('#work').empty();
+        } else {
+          alert("埋め込みエラー");
+        }
+      }
+      return html;
+    }
+  </script>
+
+</body>
+
+</html>
