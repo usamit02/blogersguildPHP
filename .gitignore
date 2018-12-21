@@ -62,3 +62,5 @@ private_ini/mysql.ini
 private_ini/pay.ini
 vendor
 twitteroauth-0.9.2
+public_html/media
+public_html/img

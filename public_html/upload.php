@@ -6,28 +6,43 @@ if (isset($_POST['rid']) && isset($_POST['id'])) {
     //foreach ($_FILES['file']['tmp_name'] as $key => $file) {
     if (is_uploaded_file($_FILES['file']['tmp_name'])) {
         $file = $_FILES['file'];
-        if ($file['size'] > 10000) {
-            $in = imagecreatefromjpeg($file['tmp_name']);
-            $size = getimagesize($file['tmp_name']);
-            $h = 112;
-            $w = $size[0] * ($h / $size[1]);
-            $out = imagecreatetruecolor($w, $h);
-            imagecopyresampled($out, $in, 0, 0, 0, 0, $w, $h, $size[0], $size[1]);
-            imagejpeg($out, __DIR__."/img/$rid/s-$id.jpg");
-            imagedestroy($in);
-            imagedestroy($out);
-        }
-        if (move_uploaded_file($_FILES['file']['tmp_name'], __DIR__."/img/$rid/$id.jpg")) {
-            $res['msg'] = 'ok';
+        if ($file['size'] <= 50000000) {
+            if ($file['type'] === 'image/jpeg') {
+                if ($file['size'] > 10000) {
+                    $in = imagecreatefromjpeg($file['tmp_name']);
+                    $size = getimagesize($file['tmp_name']);
+                    $h = 112;
+                    $w = $size[0] * ($h / $size[1]);
+                    $out = imagecreatetruecolor($w, $h);
+                    imagecopyresampled($out, $in, 0, 0, 0, 0, $w, $h, $size[0], $size[1]);
+                    imagejpeg($out, __DIR__."/media/$rid/s-$id.jpg");
+                    imagedestroy($in);
+                    imagedestroy($out);
+                }
+                if (move_uploaded_file($_FILES['file']['tmp_name'], __DIR__."/media/$rid/$id.jpg")) {
+                    $res['typ'] = 'img';
+                    $res['ext'] = 'jpg';
+                } else {
+                    $res['err'] = 'ファイルの書き込みに失敗しました。';
+                }
+            } else {
+                $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+                if (move_uploaded_file($_FILES['file']['tmp_name'], __DIR__."/media/$rid/$id.$ext")) {
+                    $res['typ'] = substr($file['type'], 0, strpos($file['type'], '/'));
+                    $res['ext'] = $ext;
+                } else {
+                    $res['err'] = 'ファイルの書き込みに失敗しました。';
+                }
+            }
         } else {
-            $res['msg'] = 'ファイルの書き込みに失敗しました。';
+            $res['err'] = 'ファイルサイスは50MBまでにしてください。';
         }
     } else {
-        $res['msg'] = 'ファイルのアップロードに失敗しました。';
+        $res['err'] = 'ファイルのアップロードに失敗しました。';
     }
     //}
 } else {
-    $res['msg'] = '部屋が選択されていません';
+    $res['err'] = '部屋が選択されていません';
 }
 header('Access-Control-Allow-Origin: *');
 echo json_encode($res);

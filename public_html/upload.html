@@ -73,16 +73,38 @@
   <div id="media1" class="media" style="min-width: 300px;min-height:50px;border:2px dotted;">
     <p>ここにファイルをドロップ</p>
   </div>
-  <input type="file" accept="image/*">
+  <input type="file"><input class="url" type="text">
   <canvas style="display:none;"></canvas>
   <script type="text/javascript">
+    function flame(html, media) {
+      if (!html) return;
+      if (html.indexOf("twitter.com") > 0) {
+        let id = html.match("twitter.com/[0-9a-zA-Z_]{1,15}/status(?:es)?/([0-9]{19})");
+        if (id && id.length) {
+          $(media).html('<ngx-tweet tweeId="' + id[1] + '"></ngx-tweet>');
+        } else {
+          alert("twitterのurlを解析できませんでした。");
+        }
+      } else if (html.indexOf("youtu.be") > 0 || html.indexOf("youtube.com") > 0) {
+        let id = html.match('[\/?=]([a-zA-Z0-9\-_]{11})');
+        if (id && id.length) {
+          let tag = '<img src="http://i.ytimg.com/vi/' + id[1] + '/sddefault.jpg">';
+          $(media).html('<a href="https://youtube.com/watch?v=' + id[1] + '" target="_blank">' + tag + '</a>');
+        } else {
+          alert("youtubeのurlを解析できませんでした。");
+        }
+      } else {
+
+      }
+    }
     function upload(files, media) {
       if (!files.length) return;
+      var rowCount = 0;
+      var status = new createStatusbar(media); //Using this we can set progress.
+      status.setFileNameSize(files[0].name, files[0].size);
       if (files[0].type.match(/image.*/)) {
         var canvas = document.querySelector('canvas');
         var ctx = canvas.getContext('2d');
-        var status = new createStatusbar(media); //Using this we can set progress.
-        status.setFileNameSize(files[0].name, files[0].size);
         var img = new Image();
         var reader = new FileReader();
         reader.onload = () => {
@@ -97,17 +119,17 @@
           img.src = reader.result;
         }
         reader.readAsDataURL(files[0]);
-        var rowCount = 0;
       } else {
-        alert("写真ファイルではありません。");
+        send(files[0]);
       }
 
-      function send(blob) {
+      function send(file) {
         var rid = "1002";
+        var id = $(media).attr('id');
         var fd = new FormData();
         fd.append('rid', rid);
-        fd.append('id', $(media).attr('id'));
-        fd.append('file', blob);
+        fd.append('id', id);
+        fd.append('file', file);
         var jqXHR = $.ajax({
           xhr: function () {
             var xhrobj = $.ajaxSettings.xhr();
@@ -130,44 +152,28 @@
           processData: false,
           cache: false,
           data: fd,
-          success: function (json) {
+          success: function (data) {
             status.setProgress(100);
-            if (json.mdg = "ok") {
-              $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg?' + new Date().getTime() + '">');
+            res = JSON.parse(data);
+            if (res.err === undefined) {
+              let src = '="http://localhost/public_html/media/' + rid + '/' + id + '.' + res.ext + '?' + new Date().getTime();
+              if (res.typ === "img") {
+                $(media).html('<img src' + src + '">');
+              } else if (res.typ === "audio") {
+                $(media).html('<audio src' + src + '" controls>');
+              } else if (res.typ === "video") {
+                $(media).html('<video src' + src + '" controls>');
+              } else {
+                $(media).html('<a href' + src + '" download="' + id + '.' + res.ext + '">ダウンロード</a>');
+              }
             } else {
-              alert(json.msg);
+              alert(res.err);
             }
           },
           error: function (XMLHttpRequest, textStatus, errorThrown) {
             alert("ajax通信に失敗しました。");
           }
         });
-
-
-        /*
-        $.ajax({
-          url: "upload.php",
-          type: 'POST',
-          data: fd,
-          processData: false,
-          contentType: false,
-          success: function (json, dataType) {
-            if (json.mdg = "ok") {
-              $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg?' + new Date().getTime() + '">');
-            } else {
-              alert(json.msg);
-            }
-          },
-          error: function (XMLHttpRequest, textStatus, errorThrown) {
-            alert("ajax通信に失敗しました。");
-          }
-        });
-          .done(function (data, textStatus, jqXHR) {
-            $(media).html('<img src="http://localhost/public_html/img/' + rid + '/' + $(media).attr('id') + '.jpg">');
-          })
-          .fail(function (jqXHR, textStatus, error) {
-            console.error("error" + error.message);
-          });*/
       }
     }
     var rowCount = 0;
@@ -181,7 +187,6 @@
       this.progressBar = $("<div class='progressBar'><div></div></div>").appendTo(this.statusbar);
       this.abort = $("<div class='abort'>Abort</div>").appendTo(this.statusbar);
       $(obj).children().replaceWith(this.statusbar);
-
       this.setFileNameSize = function (name, size) {
         var sizeStr = "";
         var sizeKB = size / 1024;
@@ -212,7 +217,6 @@
       }
     }
     $(document).ready(function () {
-      console.log("ready");
       $(document).on('dragenter', function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -244,6 +248,11 @@
         let a = $(e.target).prop('files');
         let b = $(e.target).prevAll('.media');
         upload(a, b);
+      });
+      $('input[type=text]').on('change', (e) => {
+        let a = $(e.target).val();
+        let b = $(e.target).prevAll('.media');
+        flame(a, b);
       });
     });
 
