@@ -1,7 +1,6 @@
 <?php
 
 require_once __DIR__.'/../sys/dbinit.php';
-$uid = 'AMavP9Icrfe7GbbMt0YCXWFWIY42'; //$_GET['uid'];
 if (isset($_GET['sql'])) {
     $error = 0;
     $sql = explode("\n", $_GET['sql']);
@@ -28,7 +27,8 @@ if (isset($_GET['sql'])) {
             $res['maxId'] = $maxId;
         }
     }
-} else {
+} elseif (isset($_GET['uid'])) {
+    $uid = htmlspecialchars($_GET['uid']);
     $sql = "SELECT t01room.id AS id,na,discription,parent,folder,t01room.idx AS idx,chat,contents,auth,plan,prorate,amount,billing_day,
     trial_days,auth_days FROM t01room LEFT JOIN t71roomauth ON t01room.id = t71roomauth.rid AND t71roomauth.uid='$uid' 
     LEFT JOIN t13plan ON t01room.plan = t13plan.id ORDER BY t01room.idx;";

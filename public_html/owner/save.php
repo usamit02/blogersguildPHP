@@ -4,7 +4,7 @@ require_once __DIR__.'/../sys/dbinit.php';
 
 if (isset($_GET['sql'])) {
     $error = 0;
-    $sql = explode("\n", $_GET['sql']);
+    $sql = explode(";\n", $_GET['sql']);
     $db->beginTransaction();
     foreach ($sql as $s) {
         $ps = $db->prepare($s);

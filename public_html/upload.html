@@ -1,7 +1,8 @@
-<html>
+<html lang="ja">
 
 <head>
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+  <script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
   <style>
     .progressBar {
       width: 200px;
@@ -70,18 +71,37 @@
 </head>
 
 <body>
-  <div id="media1" class="media" style="min-width: 300px;min-height:50px;border:2px dotted;">
-    <p>ここにファイルをドロップ</p>
+  <div class="row" id="0">
+    <div id="media0" class="media" style="min-width: 300px;min-height:50px;border:2px dotted;">
+      <p>ここに</p>
+      <blockquote class="twitter-tweet" data-conversation="none"></blockquote>
+    </div>
   </div>
+  <div class="row" id="1">
+    <div id="media1" class="media" style="min-width: 300px;min-height:50px;border:2px dotted;">
+      <p>ここにファイルをドロップ</p>
+    </div>
+  </div>
+  <button onclick="replace()">入れ替え</button>
   <input type="file"><input class="url" type="text">
   <canvas style="display:none;"></canvas>
   <script type="text/javascript">
+    function replace() {
+      $("#0").after('<div id="dummy">dummy</div>');
+      $("#1").after($("#0"));
+      $("#dummy").replaceWith($("#1"));
+    }
+
     function flame(html, media) {
       if (!html) return;
       if (html.indexOf("twitter.com") > 0) {
         let id = html.match("twitter.com/[0-9a-zA-Z_]{1,15}/status(?:es)?/([0-9]{19})");
         if (id && id.length) {
-          $(media).html('<ngx-tweet tweeId="' + id[1] + '"></ngx-tweet>');
+          $(media).html('<blockquote class="twitter-tweet" data-conversation="none"><a href="https://' + id[0] + '"></a></blockquote>');
+          //  $(media).html('<twitter-widget class="twitter-tweet twitter-tweet-rendered" id="twitter-widget-1" style="position: static; visibility: visible; display: block; transform: rotate(0deg); max-width: 100%; width: 500px; min-width: 220px; margin-top: 10px; margin-bottom: 10px;" data-tweet-id="' +
+          //    id[1] + '"></twitter-widget>');
+          // $(".twitter-tweet").html('<a href="https://' + id[0] + '"></a>');
+          twttr.widgets.load();
         } else {
           alert("twitterのurlを解析できませんでした。");
         }
@@ -240,9 +260,15 @@
         e.preventDefault();
       });
       $(".media").on('drop', (e) => {
-        $(e.target).css('border', '2px dotted #0B85A1');
+        let media = e.target;
         e.preventDefault();
-        upload(e.originalEvent.dataTransfer.files, e.target);
+        if (media.className !== "media") {
+          media = $(media).parents(".media");
+        }
+        if (media) {
+          $(media).css('border', '2px dotted #0B85A1');
+          upload(e.originalEvent.dataTransfer.files, media);
+        }
       });
       $('input[type=file]').on('change', (e) => {
         let a = $(e.target).prop('files');
@@ -251,7 +277,8 @@
       });
       $('input[type=text]').on('change', (e) => {
         let a = $(e.target).val();
-        let b = $(e.target).prevAll('.media');
+        //let b = $(e.target).prevAll('.media');
+        let b = $("#media1")
         flame(a, b);
       });
     });
