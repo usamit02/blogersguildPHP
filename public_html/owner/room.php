@@ -1,5 +1,16 @@
 <?php
 
+function addRooms($parent, $rooms)
+{
+    $res = [];
+    $childs = array_filter($rooms, function ($room) use ($parent) {return $room['parent'] === $parent; });
+    $res = array_merge($res, $childs);
+    foreach ($childs as $child) {
+        $res = array_merge($res, addRooms($child['id'], $rooms));
+    }
+
+    return $res;
+}
 require_once __DIR__.'/../sys/dbinit.php';
 if (isset($_GET['sql'])) {
     $error = 0;
@@ -32,7 +43,31 @@ if (isset($_GET['sql'])) {
     $sql = "SELECT t01room.id AS id,na,discription,parent,folder,t01room.idx AS idx,chat,contents,auth,plan,prorate,amount,billing_day,
     trial_days,auth_days FROM t01room LEFT JOIN t71roomauth ON t01room.id = t71roomauth.rid AND t71roomauth.uid='$uid' 
     LEFT JOIN t13plan ON t01room.plan = t13plan.id ORDER BY t01room.idx;";
-    $res = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+    $authRooms = array_filter($rooms, function ($room) {return $room['auth'] >= 100; });
+    $res = [];
+    foreach ($authRooms as $i => $room) {
+        $root = true;
+        $parent = $room['parent'];
+        while (isset($parent)) {
+            $key = array_search($parent, array_column($rooms, 'id'));
+            if ($key !== false) {
+                $id = $rooms[$key]['id'];
+                if (count(array_filter($authRooms, function ($r) use ($id) {return $r['id'] === $id; }))) {
+                    $root = false;
+                }
+                $parent = $rooms[$key]['parent'];
+            } else {
+                $parent = null;
+            }
+        }
+        if ($root) {
+            $res[][0] = $room;
+        }
+    }
+    foreach ($res as $i => $room) {
+        $res[$i] = array_merge($res[$i], addRooms($room[0]['id'], $rooms));
+    }
 }
 header('Access-Control-Allow-Origin: *');
 echo json_encode($res);
