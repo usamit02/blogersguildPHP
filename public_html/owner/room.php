@@ -40,11 +40,11 @@ if (isset($_GET['sql'])) {
     }
 } elseif (isset($_GET['uid'])) {
     $uid = htmlspecialchars($_GET['uid']);
-    $sql = "SELECT t01room.id AS id,na,discription,parent,folder,t01room.idx AS idx,chat,contents,auth,plan,prorate,amount,billing_day,
-    trial_days,auth_days FROM t01room LEFT JOIN t71roomauth ON t01room.id = t71roomauth.rid AND t71roomauth.uid='$uid' 
+    $sql = "SELECT t01room.id AS id,na,discription,parent,folder,t01room.idx AS idx,chat,story,auth,plan,prorate,amount,billing_day,
+    trial_days,auth_days FROM t01room LEFT JOIN t03staff ON t01room.id = t03staff.rid AND t03staff.uid='$uid' 
     LEFT JOIN t13plan ON t01room.plan = t13plan.id ORDER BY t01room.idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-    $authRooms = array_filter($rooms, function ($room) {return $room['auth'] >= 100; });
+    $authRooms = array_filter($rooms, function ($room) {return $room['auth'] >= 100 || $room['id'] === 0; });
     $res = [];
     foreach ($authRooms as $i => $room) {
         $root = true;

@@ -1,9 +1,10 @@
 <?php
 
+header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/../sys/dbinit.php';
-if (isset($_GET['sql'])) {
+if (isset($_POST['sql'])) {
     $error = 0;
-    $sql = explode(";\r\n", $_GET['sql']);
+    $sql = explode(";\r\n", $_POST['sql']);
     $db->beginTransaction();
     foreach ($sql as $s) {
         $ps = $db->prepare($s);
@@ -24,5 +25,4 @@ if (isset($_GET['sql'])) {
     $sql = "SELECT id,txt,media,pay FROM t21story WHERE rid=$rid ORDER BY idx;";
     $res = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 }
-header('Access-Control-Allow-Origin: *');
 echo json_encode($res);

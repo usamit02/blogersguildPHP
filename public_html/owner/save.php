@@ -1,9 +1,9 @@
 <?php
 
+header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/../sys/dbinit.php';
-
+$error = 0;
 if (isset($_GET['sql'])) {
-    $error = 0;
     $sql = explode(";\n", $_GET['sql']);
     $db->beginTransaction();
     foreach ($sql as $s) {
@@ -27,7 +27,6 @@ if (isset($_GET['sql'])) {
     $planWhere = '';
     $planKey = 'id,';
     $planVal = '';
-    $error = 0;
     foreach ($data['room'] as $key => $val) {
         if ($key === 'paid') {
             $roomSet .= $val ? '' : 'plan=0,';
@@ -38,12 +37,16 @@ if (isset($_GET['sql'])) {
         }
     }
     foreach ($data['plan'] as $key => $val) {
+        if (!isset($val)) {
+            $val = 0;
+        }
         $planWhere .= "$key=$val AND ";
         $planKey .= "$key,";
         $planVal .= "$val,";
     }
     if ($planWhere) {
-        $planId = $db->query('SELECT id FROM t13plan WHERE '.substr($planWhere, 0, strlen($planWhere) - 5))->fetchcolumn();
+        $sql = 'SELECT id FROM t13plan WHERE '.substr($planWhere, 0, strlen($planWhere) - 5);
+        $planId = $db->query($sql)->fetchcolumn();
         if ($planId) {
             $planKey = '';
             $planVal = '';
@@ -55,11 +58,11 @@ if (isset($_GET['sql'])) {
         $roomSet .= "plan=$planId,";
     }
     $db->beginTransaction();
-    if ($roomSet) {
+    if ($roomSet && !$error) {
         $ps = $db->prepare('UPDATE t01room SET '.substr($roomSet, 0, strlen($roomSet) - 1)." WHERE id=$roomId;");
         $error += (($ps->execute()) && $ps->rowCount() === 1) ? 0 : 1;
     }
-    if ($planVal) {
+    if ($planVal && !$error) {
         $ps = $db->prepare('INSERT INTO t13plan ('.substr($planKey, 0, strlen($planKey) - 1).') VALUES ('
         .substr($planVal, 0, strlen($planVal) - 1).');');
         $error += (($ps->execute()) && $ps->rowCount() === 1) ? 0 : 1;
@@ -102,7 +105,7 @@ if (isset($_GET['sql'])) {
         $res['msg'] = 'ok';
     }
 }
-header('Access-Control-Allow-Origin: *');
+
 echo json_encode($res);
 /*
 

@@ -1,5 +1,6 @@
 <?php
 
+header('Access-Control-Allow-Origin: *');
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rid']) && isset($_POST['id'])) {
     $path = __DIR__.'/../media/'.htmlspecialchars($_POST['rid'], ENT_QUOTES);
     $id = htmlspecialchars($_POST['id'], ENT_QUOTES);
@@ -51,5 +52,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rid']) && isset($_POS
 } else {
     $res['err'] = '部屋が選択されていません';
 }
-header('Access-Control-Allow-Origin: *');
+
 echo json_encode($res);
