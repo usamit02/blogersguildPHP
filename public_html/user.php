@@ -13,6 +13,8 @@ if (isset($_GET['uid']) && isset($_GET['na']) && isset($_GET['avatar'])) {
     } else {
         $res['msg'] = 'データベースエラーによりログイン情報の保存に失敗しました。';
     }
+    $user = $db->query("SELECT * FROM t02user WHERE id='$id';")->fetchAll(PDO::FETCH_ASSOC);
+    $res += $user[0];
 } else {
     $ip = $_SERVER['REMOTE_ADDR'];
     $host = gethostbyaddr($ip);

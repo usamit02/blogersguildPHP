@@ -1,0 +1,31 @@
+<script>
+
+  Rx = require('./rx.min.js');//import文などで代用しても可
+
+  function subscribe_1(observer) {
+    observer.next(1);
+    observer.next(2);
+    observer.next(3);
+    observer.complete();
+  }// さっきと同じSubscribe関数
+  // 「指定のObserverに、『1,2,3』というデータと『完了』を送るもの」と解釈することもできる
+
+  var observable_1 = Rx.Observable.create(subscribe_1);
+  // Observableオブジェクトを作る
+  // subscribeメソッドとして、関数subscribe_1が登録される。
+
+  var observer_1 = {
+    next: x => console.log('Observer1 got a value: ' + x),
+    error: err => console.log('Observer1 got an error: ' + err),
+    complete: () => console.log('Observer1 got Complete'),
+  }; // さっきと同じObserverオブジェクト
+  // 「データを受け取った時の挙動が書かれているもの」と解釈することも出来る
+
+  observable_1.subscribe(observer_1);
+
+
+
+
+
+
+</script>

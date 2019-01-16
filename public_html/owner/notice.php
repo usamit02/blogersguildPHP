@@ -6,7 +6,7 @@ if (!isset($_POST['uid']) && !isset($_POST['rooms'])) {
 }
 $uid = htmlspecialchars($_POST['uid']);
 $rooms = json_decode($_POST['rooms'], true);
-$end = isset($_POST['day']) ? htmlspecialchars(date($_POST['day'])) : date('Y-m-d');
+$end = isset($_POST['day']) ? htmlspecialchars(date($_POST['day'])) : date('Y-m-d H:i:s');
 $start = date('Y-m-d', strtotime('-1 month', strtotime($end)));
 $inPayRooms = '';
 $inRooms = '';
@@ -75,6 +75,22 @@ t51roompaid.end_day>='$start' AND t51roompaid.end_day<='$end' AND t51roompaid.ri
         } else {
             $re['msg'] .= '退会。';
         }
+        $res[] = $re;
+    }
+    $rs = $db->query("SELECT t01room.na AS room,upd,amount FROM t55roombill JOIN t01room ON t55roombill.rid=t01room.id 
+WHERE t55roombill.uid='$uid' AND t55roombill.upd >='$start' AND t55roombill.upd <='$end' AND t55roombill.rid IN ($inPayRooms);");
+    while ($r = $rs->fetch()) {
+        $re['day'] = $r['upd'];
+        $re['room'] = $r['room'];
+        $re['msg'] = $r['amount'].'円を会費として自動引落';
+        $res[] = $re;
+    }
+    $rs = $db->query("SELECT t01room.na AS room,upd,amount FROM t56roomdiv JOIN t01room ON t56roomdiv.rid=t01room.id 
+WHERE t56roomdiv.uid='$uid' AND t56roomdiv.upd >='$start' AND t56roomdiv.upd <='$end' AND t56roomdiv.rid IN ($inPayRooms);");
+    while ($r = $rs->fetch()) {
+        $re['day'] = $r['upd'];
+        $re['room'] = $r['room'];
+        $re['msg'] = $r['amount'].'円サロン収益確定';
         $res[] = $re;
     }
 }

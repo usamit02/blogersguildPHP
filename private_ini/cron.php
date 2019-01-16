@@ -12,8 +12,8 @@ $dsn = $dsn.';dbname='.$dbname;
 fclose($f);
 $db = new PDO($dsn, $user, $password);
 $db->setAttribute(PDO::ATTR_EMULATE_PREPARES, 0);
-$D = intval(date('d', strtotime('-3 day')));
-if ($D === 1) {
+$billDay = intval(date('d', strtotime('-3 day')));
+if ($billDay === 1) {
     $yesterday = intval(date('d', strtotime('-4 day')));
     if ($yesterday === 31) {
         $days = '1';
@@ -29,14 +29,14 @@ if ($D === 1) {
         return;
     }
 } else {
-    $days = $D;
+    $days = $billDay;
 }
 $error = 0;
-$rs = $db->query("SELECT rid,uid,amount FROM q11roompay WHERE bill_day IN($days);");
+$rs = $db->query("SELECT rid,uid,amount FROM q11roompay WHERE bill_d IN($days);");
 $db->beginTransaction();
 while ($r = $rs->fetch()) {
-    $ps = $db->prepare('INSERT INTO t55roombill (rid,uid,upd,amount) VALUES (?,?,?,?);');
-    $error += $ps->execute(array($r['rid'], $r['uid'], date('Y-m-d'), $r['amount'])) && $ps->rowCount() === 1 ? 0 : 1;
+    $ps = $db->prepare('INSERT INTO t55roombill (rid,uid,upd,bill_day,amount) VALUES (?,?,?,?,?);');
+    $error += $ps->execute(array($r['rid'], $r['uid'], date('Y-m-d'), $billDay, $r['amount'])) && $ps->rowCount() === 1 ? 0 : 1;
     if (isset($bill[$r['rid']])) {
         $bill[$r['rid']] += $r['amount'];
     } else {
@@ -92,8 +92,8 @@ foreach ($bill as $room => $income) {
         foreach ($holder as $h) {
             $rate = $sum ? $h['rate'] / $sum : 1 / $num;
             $amount = floor($income * $rate);
-            $ps = $db->prepare('INSERT INTO t56roomdiv (rid,uid,upd,amount) VALUES (?,?,?,?);');
-            $error += $ps->execute(array($room, $h['uid'], date('Y-m-d'), $amount)) && $ps->rowCount() === 1 ? 0 : 1;
+            $ps = $db->prepare('INSERT INTO t56roomdiv (rid,uid,upd,bill_day,amount) VALUES (?,?,?,?,?);');
+            $error += $ps->execute(array($room, $h['uid'], date('Y-m-d'), $bill_day, $amount)) && $ps->rowCount() === 1 ? 0 : 1;
             $ps = $db->prepare('UPDATE t02user SET p=p+? WHERE id=?');
             $error += $ps->execute(array($amount, $h['uid'])) && $ps->rowCount() === 1 ? 0 : 1;
         }

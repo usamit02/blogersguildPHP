@@ -51,18 +51,18 @@ if (isset($referer)) {
             } catch (Exception $e) {
                 $json['error'] = "payjpの定額課金に失敗しました。\r\n".$e->getMessage();
             }
-            if (isset($result['id'])) {
+            if (isset($result['id']) && $result['id'] !== $userId) {//既に定額課金があるとpayjpはresult.idにuserIdを返す
                 $days = isset($plan[0]['trial_days']) ? $plan[0]['trial_days'] : 0;
                 $days += isset($plan[0]['auth_days']) ? $plan[0]['auth_days'] : 0;
                 $start_day = $days ? date('Y-m-d H:i:s', strtotime("+$days day")) : date('Y-m-d H:i:s');
                 $ps = $db->prepare('INSERT INTO t11roompay(uid,rid,sub_day,start_day,payjp_id) VALUES (?,?,?,?,?);');
-                if ($ps->execute(array($userId, $room, data('Y-m-d H:i:s'), $start_day, $result['id']))) {
+                if ($ps->execute(array($userId, $room, date('Y-m-d H:i:s'), $start_day, $result['id'])) && $ps->rowCount() === 1) {
                     $json['msg'] = 'ok';
                 } else {
-                    $json['error'] = 'データベースエラーによりルーム支払データ挿入に失敗しました。';
+                    $json['error'] = "データベースエラーによりルーム支払データ挿入に失敗しました。\nC-Lifeまでお問合せください。";
                 }
             } else {
-                $json['error'] = 'payjpの定額課金に失敗しました。';
+                $json['error'] = "payjpの定額課金に失敗しました。\nC-Lifeまでお問合せください。";
             }
         }
     } else {
