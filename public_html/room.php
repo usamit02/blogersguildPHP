@@ -1,14 +1,20 @@
 <?php
 
-function addRooms(&$parent, $rooms)
+function addRooms($rooms, $parent)
 {
+    global $folders;
     $res = [];
     if ($parent['allow']) {
         $childs = array_filter($rooms, function ($room) use ($parent) {return $room['parent'] === $parent['id']; });
-        $parent['folder'] = count($childs) ? 1 : 0;
-        $res = array_merge($res, $childs);
+        //$folders += count($childs) ? $parent : [];
+        if (count($childs)) {
+            $folders[] = $parent;
+        }
+        $res += $childs;
+        //$res = array_merge($res, $childs);
         foreach ($childs as $child) {
-            $res = array_merge($res, addRooms($child, $rooms));
+            //$res = array_merge($res, addRooms($child, $rooms));
+            $res += addRooms($rooms, $child);
         }
     }
 
@@ -27,8 +33,13 @@ if (isset($_GET['plan'])) {
     LEFT JOIN t12bookmark ON t01room.id = t12bookmark.rid AND t12bookmark.uid='$uid' ORDER BY idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 }
-$res = array_filter($rooms, function ($room) {return $room['id'] === 1; });
-$res = array_merge($res, addRooms($res[1], $rooms));
+//$res = array_filter($rooms, function ($room) {return $room['id'] === 1; });
+//$res = array_merge($res, addRooms($res[1], $rooms));
+$res[] = $rooms[1];
+$folders = [];
+$res += addRooms($rooms, $rooms[1]);
+foreach ($folders as $folder) {
+}
 echo json_encode($res);
 
 //IF(ISNULL(price),null,IF((price < 1 or start_day < now()),1,0)) AS allow,
