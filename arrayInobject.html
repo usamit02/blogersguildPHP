@@ -1,0 +1,26 @@
+<html>
+
+<head>
+</head>
+
+<body>
+  haro!
+</body>
+<script>
+  var mentions = [{ rid: 1001, id: 'axe', upd: new Date('2019/1/1 10:01') },
+  { rid: 2, id: 'fea', upd: new Date('2018/1/1 9:01') },
+  { rid: 1001, id: 'eger', upd: new Date('2019/4/1 12:55') },
+  ];
+  var target = {};
+  for (var i = 0; i < mentions.length; i++) {
+    target[mentions[i].rid] = true;//.push({ id: mentions[i].id, upd: mentions[i].upd });
+  }
+  Object.keys(target).forEach((key) => {
+    target[key] = mentions.filter(mention => mention.rid === Number(key));
+  });
+  var res = target;
+  console.log(target);
+
+</script>
+
+</html>
