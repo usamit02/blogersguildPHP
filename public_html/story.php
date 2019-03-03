@@ -1,5 +1,6 @@
 <?php
 
+header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
 $uid = htmlspecialchars($_GET['uid']);
 $rid = htmlspecialchars($_GET['rid']);
@@ -9,5 +10,4 @@ UNION SELECT id,txt,media,idx,0 FROM t21story INNER JOIN t52storypaid ON t21stor
 t21story.id=t52storypaid.sid AND t52storypaid.uid='$uid' WHERE t21story.rid=$rid AND pay > 0 ORDER BY 4;";
 $res['main'] = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 $res['upd'] = $db->query("SELECT MAX(upd) as upd,MAX(rev) as rev FROM t21story WHERE rid=$rid;")->fetch();
-header('Access-Control-Allow-Origin: *');
 echo json_encode($res);

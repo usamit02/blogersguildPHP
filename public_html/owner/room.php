@@ -11,6 +11,7 @@ function addRooms($parent, $rooms)
 
     return $res;
 }
+header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/../sys/dbinit.php';
 if (isset($_GET['sql'])) {
     $error = 0;
@@ -69,5 +70,4 @@ if (isset($_GET['sql'])) {
         $res[$i] = array_merge($res[$i], addRooms($room[0]['id'], $rooms));
     }
 }
-header('Access-Control-Allow-Origin: *');
 echo json_encode($res);

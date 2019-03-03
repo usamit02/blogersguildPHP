@@ -1,5 +1,6 @@
 <?php
 
+header('Access-Control-Allow-Origin: *');
 $referer = $_SERVER['HTTP_REFERER'];
 if (isset($referer) && isset($_GET['uid']) && isset($_GET['rid']) && isset($_GET['ok']) || isset($_GET['ban'])) {
     require_once __DIR__.'/payjp/init.php';
@@ -76,5 +77,4 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['rid']) && isset($_GET
 } else {
     $json['error'] = '不適切なアクセス手順です。';
 }
-header('Access-Control-Allow-Origin: *');
 echo json_encode($json);
