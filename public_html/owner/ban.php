@@ -31,7 +31,7 @@ if (isset($_GET['room'])) {
     while ($r = $rs->fetch()) {
         $room = array_values(array_filter($rooms, function ($room) use ($r) {return $room['id'] === $r['rid']; }));
         $staffRooms = array_merge($staffRooms, $room);
-        if ($r['auth'] > $room[0]['auth']) {
+        if (count($room) && $r['auth'] >= $room[0]['auth']) {
             $room[0]['class'] = $r['class'];
             $bossRooms = array_merge($bossRooms, $room);
         }
@@ -40,7 +40,7 @@ if (isset($_GET['room'])) {
     $payRooms = [];
     while ($r = $rs->fetch()) {
         $room = array_values(array_filter($rooms, function ($room) use ($r) {return $room['id'] === $r['rid']; }));
-        if ($room[0]['auth'] >= 200) {
+        if (count($room) && $room[0]['auth'] < 200) {
             $payRooms = array_merge($payRooms, $room);
         }
     }

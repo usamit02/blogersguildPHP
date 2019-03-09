@@ -25,16 +25,17 @@ if (isset($_GET['search'])) {
     } while (isset($rid));
     $authIn = substr($authIn, 0, strlen($authIn) - 1);
     $and = $uid ? " AND uid='$uid'" : '';
-    $sql = "SELECT id,na,avatar FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid$and 
+    $sql = "SELECT DISTINCT id,na,avatar FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid$and 
     WHERE rid IN($authIn)";
     if ($payrid) {
         $sql .= " UNION SELECT id,na,avatar FROM t02user INNER JOIN t11roompay ON t02user.id=t11roompay.uid$and 
-    WHERE rid =$payrid AND start_day > now()";
+    WHERE rid =$payrid AND start_day < now()";
         $payRooms = $db->query("SELECT uid FROM t11roompay WHERE rid=$payrid"."$and;")->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $payRooms = [];
     }
     $rs = $db->query($sql);
+    $rrs = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     $staffRooms = $db->query("SELECT uid,rid,auth,idx FROM t03staff WHERE rid IN($authIn)$and ORDER BY auth DESC,idx;")->fetchAll(PDO::FETCH_ASSOC);
     $res = [];
     while ($r = $rs->fetch(PDO::FETCH_ASSOC)) {

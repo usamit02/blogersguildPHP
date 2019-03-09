@@ -8,7 +8,7 @@ function setRooms($parent)
     });
     if (count($childs)) {
         $rooms[$parent]['folder'] = 1;
-        if ($rooms[$parent]['allow'] || $rooms[$parent]['auth']) {
+        if ($rooms[$parent]['lock'] < 1 || $rooms[$parent]['auth']) {
             foreach ($childs as $key => $child) {
                 if (!isset($child['auth']) || $child['auth'] < $rooms[$parent]['auth']) {
                     $rooms[$key]['auth'] = $rooms[$parent]['auth'];
@@ -25,28 +25,28 @@ function setRooms($parent)
 }
 header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
-if (isset($_GET['plan'])) {
-    $plan = htmlspecialchars($_GET['plan']);
-    $res = $db->query("SELECT amount FROM t13plan WHERE id=$plan;")->fetchAll(PDO::FETCH_ASSOC);
-} elseif (isset($_GET['csd'])) {
+if (isset($_GET['csd'])) {
     $uid = htmlspecialchars($_GET['uid']);
     $rid = htmlspecialchars($_GET['rid']);
     $csd = htmlspecialchars($_GET['csd']);
     $ps = $db->prepare('INSERT INTO t14roomcursor (uid,rid,csd) VALUES (:uid,:rid,:csd) ON DUPLICATE KEY 
     UPDATE csd=VALUES(csd);');
     $ps->execute(array('uid' => $uid, 'rid' => $rid, 'csd' => $csd));
+    $res = 'ok';
 } else {
     $uid = htmlspecialchars($_GET['uid']);
-    $sql = "SELECT id AS num,id,na,discription,parent,plan,0 AS folder,chat,story,csd,t03staff.auth AS auth,
-    IF((!plan or start_day < now()),1,0) AS allow,IF(ISNULL(t12bookmark.uid),0,1) AS bookmark FROM t01room 
+    $sql = "SELECT id AS id0,id,na,discription,parent,plan,0 AS folder,chat,story,csd,t03staff.auth AS auth,
+    IF(plan,IF(ISNULL(start_day),10,IF(start_day<now(),0,1)),0) AS `lock`,IF(ISNULL(t12bookmark.uid),0,1) AS bookmark FROM t01room 
     LEFT JOIN t11roompay ON t01room.id = t11roompay.rid AND t11roompay.uid='$uid' 
     LEFT JOIN t03staff ON t01room.id = t03staff.rid AND t03staff.uid='$uid' 
     LEFT JOIN t12bookmark ON t01room.id = t12bookmark.rid AND t12bookmark.uid='$uid' 
     LEFT JOIN t14roomcursor ON t01room.id = t14roomcursor.rid AND t14roomcursor.uid='$uid' ORDER BY t01room.idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
     setRooms(1);
-    echo json_encode(array_values($rooms));
+    $res = array_values($rooms);
 }
+echo json_encode($res);
+/*IF((!plan or start_day < now()),1,0) AS allow,*/
 /*setFolder($rooms, 1);
     $rooms[1]['folder'] = 1;
     $res[] = $rooms[1];

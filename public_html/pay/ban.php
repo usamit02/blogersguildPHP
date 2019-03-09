@@ -17,22 +17,22 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['ban'])) {
         $ban = htmlspecialchars($_GET['ban']);
         $rs = $db->query("SELECT payjp_id,rid FROM t11roompay WHERE uid='$uid';");
         $error = 0;
-        while ($r = $rs->fetch() && !$error) {
+        while ($r = $rs->fetch()) {
             $payjp_id = $r['payjp_id'];
             $rid = $r['rid'];
             $db->beginTransaction();
             $ps = $db->prepare('INSERT INTO t51roompaid(uid,rid,payjp_id,ban_uid,end_day) VALUES (?,?,?,?,?);');
             $error += !$ps->execute(array($uid, $rid, $payjp_id, $ban, date('Y-m-d H:i:s'))) && $ps->rowCount() !== 1;
-            $ps = $db->prepare("DELETE FROM t11roompay WHERE uid='$uid' AND rid=$rid;");
-            $error += !$ps->execute() && $ps->rowCount() !== 1;
+            $ps = $db->prepare('DELETE FROM t11roompay WHERE uid=? AND rid=?;');
+            $error += !$ps->execute(array($uid, $rid)) && $ps->rowCount() !== 1;
             if (!$error) {
                 try {
-                    $res = Payjp\Subscription::retrieve($payjp_id);
-                    $res->delete();
+                    $sub = Payjp\Subscription::retrieve($payjp_id);
+                    $sub->delete();
                 } catch (Exception $e) {
                     $json['error'] = $e->getMessage();
                 }
-                if (isset($res['id'])) {
+                if (isset($sub['id'])) {
                     $db->commit();
                 } else {
                     $db->rollBack();
