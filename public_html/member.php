@@ -4,7 +4,7 @@ header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
 if (isset($_GET['search'])) {
     $x = htmlspecialchars($_GET['search']);
-    $sql = "SELECT id,na,avatar FROM t02user WHERE na like '%$x%' LIMIT 50;";
+    $sql = "SELECT * FROM t02user WHERE na like '%$x%' LIMIT 50;";
     $res = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 } elseif (isset($_GET['rid'])) {
     $rid = intval(htmlspecialchars($_GET['rid']));
@@ -25,19 +25,18 @@ if (isset($_GET['search'])) {
     } while (isset($rid));
     $authIn = substr($authIn, 0, strlen($authIn) - 1);
     $and = $uid ? " AND uid='$uid'" : '';
-    $sql = "SELECT DISTINCT id,na,avatar FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid$and 
-    WHERE rid IN($authIn)";
+    $sql = $uid ? "SELECT id,na,avatar,upd,rev,p FROM t02user WHERE id='$uid'" :
+    "SELECT DISTINCT id,na,avatar,upd,rev,p FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid WHERE rid IN($authIn)";
     if ($payrid) {
-        $sql .= " UNION SELECT id,na,avatar FROM t02user INNER JOIN t11roompay ON t02user.id=t11roompay.uid$and 
-    WHERE rid =$payrid AND start_day < now()";
+        $sql .= $uid ? '' :
+        " UNION SELECT id,na,avatar,upd,rev,p FROM t02user INNER JOIN t11roompay ON t02user.id=t11roompay.uid WHERE rid =$payrid AND start_day < now()";
         $payRooms = $db->query("SELECT uid FROM t11roompay WHERE rid=$payrid"."$and;")->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $payRooms = [];
     }
-    $rs = $db->query($sql);
-    $rrs = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
     $staffRooms = $db->query("SELECT uid,rid,auth,idx FROM t03staff WHERE rid IN($authIn)$and ORDER BY auth DESC,idx;")->fetchAll(PDO::FETCH_ASSOC);
     $res = [];
+    $rs = $db->query($sql);
     while ($r = $rs->fetch(PDO::FETCH_ASSOC)) {
         $staffs = array_values(array_filter($staffRooms, function ($room) use ($r) {return $room['uid'] === $r['id']; }));
         $pays = array_filter($payRooms, function ($room) use ($r) {return $room['uid'] === $r['id']; });
@@ -45,6 +44,22 @@ if (isset($_GET['search'])) {
         $r['auth'] = count($staffs) ? $staffs[0]['auth'] : 0;
         $r['payrid'] = count($pays) ? $payrid : 0;
         $res[] = $r;
+    }
+} elseif (isset($_GET['uid']) && isset($_GET['mid'])) {
+    $uid = htmlspecialchars($_GET['uid']);
+    $mid = htmlspecialchars($_GET['mid']);
+    if (isset($_GET['block'])) {
+        $block = htmlspecialchars($_GET['block']);
+        $sql = $block ? 'DELETE FROM t15block WHERE uid=? AND mid=?;' : 'INSERT INTO t15block (uid,mid) VALUES (?,?);';
+        $ps = $db->prepare($sql);
+        if ($ps->execute(array($uid, $mid)) && $ps->rowCount() === 1) {
+            $res['block'] = $block ? 0 : 1;
+        } else {
+            $res['msg'] = 'データベースエラー';
+        }
+    } else {
+        $block = $db->query("SELECT mid FROM t15block WHERE uid='$uid' AND mid='$mid';")->fetchColumn();
+        $res['block'] = $block ? 1 : 0;
     }
 } else {
     $res['error'] = '不正なアクセスです。';

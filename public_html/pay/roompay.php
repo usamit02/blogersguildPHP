@@ -15,11 +15,11 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['rid']) && isset($_GET
         $url = parse_url($referer);
         $rid = htmlspecialchars($_GET['rid']);
         $uid = htmlspecialchars($_GET['uid']);
-        $payjp_id = $db->query("SELECT payjp_id FROM t11roompay WHERE uid='$uid' AND rid='$rid';")->fetchcolumn();
+        $payjp_id = $db->query("SELECT payjp_id FROM t11roompay WHERE uid='$uid' AND rid=$rid;")->fetchcolumn();
         $error = 0;
         if (isset($_GET['ok']) && isset($payjp_id) && $payjp_id) {
             $ok_uid = htmlspecialchars($_GET['ok']);
-            $trial = $db->query("SELECT trial_days FROM t01room JOIN t13plan ON t01room.plan=t13plan.id WHERE t01room.id=$rid;")->fetchcolumn();
+            $trial = $db->query("SELECT trial_days FROM t01room JOIN t13plan ON t01room.id=t13plan.rid AND t01room.plan=t13plan.id WHERE t01room.id=$rid;")->fetchcolumn();
             $trial_end = $trial ? strtotime(date('Y-m-d H:i:s', strtotime("+$trial day"))) : 'now';
             $db->beginTransaction();
             $ps = $db->prepare('UPDATE t11roompay SET start_day=?,ok_uid=? WHERE payjp_id=?;');

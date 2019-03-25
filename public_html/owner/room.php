@@ -38,7 +38,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
                 $error += !$ps->execute(array($r['uid'], $rid)) && $ps->rowCount() !== 1;
                 if (!$error && $res['msg'] === 'ok') {
                     try {
-                        $sub = Payjp\Subscription::retrieve($payjp_id);
+                        $sub = Payjp\Subscription::retrieve($r['payjp_id']);
                         $sub->delete();
                     } catch (Exception $e) {
                         $res['msg'] = $e->getMessage();
@@ -93,8 +93,10 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
                 $error += !$ps->execute(array($rid));
                 $ps = $db->prepare('DELETE FROM t21story WHERE rid=?;');
                 $error += !$ps->execute(array($rid));
+                $ps = $db->prepare('INSERT INTO t50roomed() SELECT * FROM t01room WHERE id=?;');
+                $error += !$ps->execute(array($rid)) && $ps->rowCount() !== 1;
                 $ps = $db->prepare('DELETE FROM t01room WHERE id=?;');
-                $error += !$ps->execute(array($rid));
+                $error += !$ps->execute(array($rid)) && $ps->rowCount() !== 1;
                 $ps = $db->prepare('UPDATE t01room SET parent=?,idx=idx+? WHERE parent=?;');
                 $error += !$ps->execute(array($delroom['parent'], $delroom['idx'], $rid));
                 if (!$error) {
@@ -125,7 +127,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
     }
 } elseif (isset($_GET['parent'])) {
     $res['maxId'] = 0;
-    $maxId = $db->query('SELECT MAX(id) FROM t01room;')->fetchcolumn();
+    $maxId = $db->query('SELECT MAX(temp.id) FROM (SELECT id FROM t01room UNION SELECT id FROM t50roomed) AS temp;')->fetchcolumn();
     if ($maxId) {
         ++$maxId;
         $parent = (int) $_GET['parent'];
@@ -136,7 +138,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
     }
 } elseif (isset($_GET['uid'])) {
     $uid = htmlspecialchars($_GET['uid']);
-    $sql = "SELECT t01room.id AS id,na,discription,parent,folder,t01room.idx AS idx,chat,story,auth,plan,prorate,amount,billing_day,
+    $sql = "SELECT t01room.id AS id,na,discription,parent,t01room.idx AS idx,chat,story,auth,plan,prorate,amount,billing_day,
     trial_days,auth_days FROM t01room LEFT JOIN t03staff ON t01room.id = t03staff.rid AND t03staff.uid='$uid' 
     LEFT JOIN t13plan ON t01room.id = t13plan.rid AND t01room.plan = t13plan.id ORDER BY t01room.idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);

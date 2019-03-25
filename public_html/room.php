@@ -25,16 +25,24 @@ function setRooms($parent)
 }
 header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
-if (isset($_GET['csd'])) {
-    $uid = htmlspecialchars($_GET['uid']);
-    $rid = htmlspecialchars($_GET['rid']);
+$uid = isset($_GET['uid']) ? htmlspecialchars($_GET['uid']) : '';
+$rid = isset($_GET['rid']) ? htmlspecialchars($_GET['rid']) : '';
+$res = '';
+if (isset($_GET['csd'])) {//既読カーソルを記録
     $csd = htmlspecialchars($_GET['csd']);
     $ps = $db->prepare('INSERT INTO t14roomcursor (uid,rid,csd) VALUES (:uid,:rid,:csd) ON DUPLICATE KEY 
     UPDATE csd=VALUES(csd);');
-    $ps->execute(array('uid' => $uid, 'rid' => $rid, 'csd' => $csd));
-    $res = 'ok';
-} else {
-    $uid = htmlspecialchars($_GET['uid']);
+    $error = $ps->execute(array('uid' => $uid, 'rid' => $rid, 'csd' => $csd));
+} elseif (isset($_GET['rids'])) {//新着メッセージ判定素材
+    $rids = json_decode(htmlspecialchars($_GET['rids']));
+    $where = 'rid IN (';
+    foreach ($rids as $i => $rid) {
+        $where .= "$rid,";
+    }
+    $where = substr($where, 0, strlen($where) - 1).')';
+    $res = $db->query("SELECT rid AS id,csd,upd FROM t14roomcursor LEFT JOIN t01room on t14roomcursor.rid=t01room.id 
+    WHERE uid='$uid' AND $where;")->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
+} else {//部屋データ取得
     $sql = "SELECT id AS id0,id,na,discription,parent,plan,0 AS folder,chat,story,csd,t03staff.auth AS auth,
     IF(plan,IF(ISNULL(start_day),10,IF(start_day<now(),0,1)),0) AS `lock`,IF(ISNULL(t12bookmark.uid),0,1) AS bookmark FROM t01room 
     LEFT JOIN t11roompay ON t01room.id = t11roompay.rid AND t11roompay.uid='$uid' 
