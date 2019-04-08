@@ -34,9 +34,21 @@ if (isset($_GET['uid']) && isset($_GET['na']) && isset($_GET['avatar'])) {
     $user = $db->query("SELECT * FROM t02user WHERE no=$no;")->fetch(PDO::FETCH_ASSOC);
     if ($user) {
         $res['user'] = $user;
+        $uid = $user['id'];
+        $res['staff'] = $db->query("SELECT auth,class,t01room.na AS room,t03staff.rid AS rid,t03staff.upd AS upd 
+        FROM t03staff JOIN t01room ON t03staff.rid=t01room.id JOIN mt03auth ON t03staff.auth=mt03auth.id 
+        WHERE t03staff.uid='$uid' ORDER BY t03staff.rid;")->fetchAll(PDO::FETCH_ASSOC);
+        $res['member'] = $db->query("SELECT IF(start_day>now(),0,1) AS auth,class,t01room.na AS room,
+        t11roompay.rid AS rid, t11roompay.start_day AS upd FROM t11roompay 
+        JOIN t01room ON t11roompay.rid=t01room.id JOIN mt03auth ON IF(start_day>now(),0,1)=mt03auth.id 
+        WHERE t11roompay.uid='$uid' ORDER BY t11roompay.rid;")->fetchAll(PDO::FETCH_ASSOC);
+        $res['links'] = $db->query("SELECT idx,media,na,url FROM t32link WHERE uid='$uid' ORDER BY idx;")->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $res['msg'] = 'データベースエラーによりユーザー読み込みに失敗しました。';
     }
+} elseif (isset($_GET['link'])) {
+    $uid = htmlspecialchars($_GET['link']);
+    $res = $db->query("SELECT idx,media,na,url FROM t32link WHERE uid='$uid' ORDER BY idx;")->fetchAll(PDO::FETCH_ASSOC);
 } else {
     $ip = $_SERVER['REMOTE_ADDR'];
     $host = gethostbyaddr($ip);

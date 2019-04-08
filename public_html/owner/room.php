@@ -87,7 +87,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
                 $db->beginTransaction();
                 $ps = $db->prepare('DELETE FROM t03staff WHERE rid=?;');
                 $error += !$ps->execute(array($rid));
-                $ps = $db->prepare('DELETE FROM t12bookmark WHERE rid=?;');
+                $ps = $db->prepare('DELETE FROM t17bookmark WHERE rid=?;');
                 $error += !$ps->execute(array($rid));
                 $ps = $db->prepare('DELETE FROM t14roomcursor WHERE rid=?;');
                 $error += !$ps->execute(array($rid));

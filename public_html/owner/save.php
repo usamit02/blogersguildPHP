@@ -8,7 +8,7 @@ if (isset($_GET['sql'])) {
     $db->beginTransaction();
     foreach ($sql as $s) {
         $ps = $db->prepare($s);
-        $error += (($ps->execute()) && $ps->rowCount() === 1) ? 0 : 1;
+        $error += (($ps->execute()) && $ps->rowCount()) ? 0 : 1;
     }
     if ($error) {
         $db->rollBack();
@@ -105,10 +105,23 @@ if (isset($_GET['sql'])) {
         $db->rollBack();
     } else {
         $db->commit();
-        $res['msg'] = 'ok';
+        $res['msg'] = 'ok'; //以下現在課金のないプランを掃除、失敗しても続行。
+        $rs = $db->query("SELECT t13plan.id AS id,t13plan.payjp_id AS payjp_id FROM t13plan 
+        LEFT JOIN t11roompay ON t13plan.rid=t11roompay.rid AND t13plan.id=t11roompay.plan 
+        WHERE t13plan.rid=$rid AND t13plan.id<>$planId AND t11roompay.uid IS NULL;");
+        while ($r = $rs->fetch()) {
+            try {
+                $del = Payjp\Plan::retrieve($r['payjp_id']);
+                $del->delete();
+                if (isset($del['id'])) {
+                    $ps = $db->prepare('DELETE FROM t13plan WHERE rid=? AND id=? AND payjp_id=?;');
+                    $ps->execute(array($rid, $r['id'], $del['id']));
+                }
+            } catch (Exception $e) {
+            }
+        }
     }
 }
-
 echo json_encode($res);
 /*
 

@@ -31,7 +31,7 @@ if (isset($referer)) {
                 $json['error'] = '価格情報の取得に失敗しました。';
             }
         } else {//定額課金情報取得
-            $plan = $db->query("SELECT plan,trial_days,auth_days FROM t01room JOIN t13plan 
+            $plan = $db->query("SELECT plan,trial_days,auth_days,prorate FROM t01room JOIN t13plan 
         ON t01room.id=t13plan.rid AND t01room.plan=t13plan.id WHERE t01room.id=$rid;")->fetchAll(PDO::FETCH_ASSOC);
             if (!$plan || count($plan) !== 1) {
                 $json['error'] = '部屋まちがってます。';
@@ -90,17 +90,23 @@ if (isset($referer)) {
                 $json['error'] = "payjpの課金処理に失敗しました。\nC-Lifeまでお問合せください。";
             }
         } elseif (!isset($json)) {//定額課金作成
+            $prorate = $plan[0]['prorate'] === 1 ? true : false;
             try {
-                $result = Payjp\Subscription::create(array('customer' => $uid, 'plan' => "blg$rid".'_'.$plan[0]['plan']));
+                $sub = Payjp\Subscription::create(array(
+                    'customer' => $uid,
+                    'plan' => "blg$rid".'_'.$plan[0]['plan'],
+                    'prorate' => $prorate,
+                ));
             } catch (Exception $e) {
                 $json['error'] = "payjpの定額課金に失敗しました。\r\n".$e->getMessage();
             }
-            if (isset($result['id']) && $result['id'] !== $uid) {//既に定額課金があるとpayjpはresult.idにuidを返す
-                $days = isset($plan[0]['trial_days']) ? $plan[0]['trial_days'] : 0;
-                $days += isset($plan[0]['auth_days']) ? $plan[0]['auth_days'] : 0;
-                $start_day = $days ? date('Y-m-d H:i:s', strtotime("+$days day")) : date('Y-m-d H:i:s');
-                $ps = $db->prepare('INSERT INTO t11roompay(uid,rid,sub_day,start_day,payjp_id) VALUES (?,?,?,?,?);');
-                if ($ps->execute(array($uid, $rid, date('Y-m-d H:i:s'), $start_day, $result['id'])) && $ps->rowCount() === 1) {
+            if (isset($sub['id']) && $sub['id'] !== $uid) {//既に定額課金があるとpayjpはresult.idにuidを返す
+                $active = $sub['status'] === 'active' || $sub['status'] === 'trial' && $plan[0]['auth_days'] === 0 ? 1 : 0;
+                $ps = $db->prepare('INSERT INTO t11roompay(uid,rid,plan,created,start_day,end_day,payjp_id,active) 
+                VALUES (?,?,?,?,?,?,?,?);');
+                if ($ps->execute(array($uid, $rid, $plan[0]['plan'], date('Y-m-d H:i:s', $sub['created']),
+                date('Y-m-d', $sub['current_period_start']), date('Y-m-d', $sub['current_period_end']),
+                $sub['id'], $active, )) && $ps->rowCount() === 1) {
                     $json['msg'] = 'plan';
                     $json['plan'] = $plan[0]['auth_days'];
                 } else {
@@ -117,3 +123,7 @@ if (isset($referer)) {
     $json['error'] = '不適切なアクセス手順です。';
 }
 echo json_encode($json);
+
+//$days = isset($plan[0]['trial_days']) ? $plan[0]['trial_days'] : 0;
+                //$days += isset($plan[0]['auth_days']) ? $plan[0]['auth_days'] : 0;
+                //$start_day = $days ? date('Y-m-d H:i:s', strtotime("+$days day")) : date('Y-m-d H:i:s');

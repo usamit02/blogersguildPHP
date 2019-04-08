@@ -43,12 +43,17 @@ if (isset($_GET['csd'])) {//既読カーソルを記録
     $res = $db->query("SELECT rid AS id,csd,upd FROM t14roomcursor LEFT JOIN t01room on t14roomcursor.rid=t01room.id 
     WHERE uid='$uid' AND $where;")->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
 } else {//部屋データ取得
-    $sql = "SELECT id AS id0,id,na,discription,parent,plan,0 AS folder,chat,story,csd,t03staff.auth AS auth,
-    IF(plan,IF(ISNULL(start_day),10,IF(start_day<now(),0,1)),0) AS `lock`,IF(ISNULL(t12bookmark.uid),0,1) AS bookmark FROM t01room 
-    LEFT JOIN t11roompay ON t01room.id = t11roompay.rid AND t11roompay.uid='$uid' 
-    LEFT JOIN t03staff ON t01room.id = t03staff.rid AND t03staff.uid='$uid' 
-    LEFT JOIN t12bookmark ON t01room.id = t12bookmark.rid AND t12bookmark.uid='$uid' 
-    LEFT JOIN t14roomcursor ON t01room.id = t14roomcursor.rid AND t14roomcursor.uid='$uid' ORDER BY t01room.idx;";
+    $sql = "SELECT t01room.id AS id0,t01room.id AS id,t01room.na AS na,discription,parent,t01room.plan AS plan,
+    0 AS folder,chat,story,csd,t03staff.auth AS auth,t13plan.amount AS amount,t02user.no AS no,
+    IF(t01room.plan,IF(ISNULL(active),10,NOT(active)),0) AS `lock`,
+    IF(ISNULL(t17bookmark.uid),0,1) AS bookmark,t02user.na AS `owner`,img,avatar FROM t01room 
+    LEFT JOIN t11roompay ON t01room.id=t11roompay.rid AND t11roompay.uid='$uid' 
+    LEFT JOIN t03staff ON t01room.id=t03staff.rid AND t03staff.uid='$uid' 
+    LEFT JOIN t03staff AS staff ON t01room.id=staff.rid AND staff.auth=9000 AND staff.idx=0 
+    LEFT JOIN t02user ON staff.uid=t02user.id 
+    LEFT JOIN t17bookmark ON t01room.id=t17bookmark.rid AND t17bookmark.uid='$uid' 
+    LEFT JOIN t14roomcursor ON t01room.id=t14roomcursor.rid AND t14roomcursor.uid='$uid' 
+    LEFT JOIN t13plan ON t01room.id=t13plan.rid AND t01room.plan=t13plan.id ORDER BY t01room.idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
     setRooms(1);
     $res = array_values($rooms);

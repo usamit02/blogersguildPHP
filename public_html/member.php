@@ -25,11 +25,13 @@ if (isset($_GET['search'])) {
     } while (isset($rid));
     $authIn = substr($authIn, 0, strlen($authIn) - 1);
     $and = $uid ? " AND uid='$uid'" : '';
-    $sql = $uid ? "SELECT id,na,avatar,upd,rev,p FROM t02user WHERE id='$uid'" :
-    "SELECT DISTINCT id,na,avatar,upd,rev,p FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid WHERE rid IN($authIn)";
+    $sql = $uid ? "SELECT id,na,avatar,upd,rev,p,no FROM t02user WHERE id='$uid'" :
+    "SELECT DISTINCT t02user.id AS id,t02user.na AS na,avatar,t02user.upd AS upd,t02user.rev AS rev,p,no 
+    FROM t02user INNER JOIN t03staff ON t02user.id=t03staff.uid WHERE rid IN($authIn)";
     if ($payrid) {
         $sql .= $uid ? '' :
-        " UNION SELECT id,na,avatar,upd,rev,p FROM t02user INNER JOIN t11roompay ON t02user.id=t11roompay.uid WHERE rid =$payrid AND start_day < now()";
+        " UNION SELECT t02user.id,na,avatar,t02user.upd,rev,p,no FROM t02user INNER JOIN t11roompay 
+        ON t02user.id=t11roompay.uid WHERE rid =$payrid AND active=1;";
         $payRooms = $db->query("SELECT uid FROM t11roompay WHERE rid=$payrid"."$and;")->fetchAll(PDO::FETCH_ASSOC);
     } else {
         $payRooms = [];
