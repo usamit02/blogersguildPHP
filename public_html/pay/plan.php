@@ -14,7 +14,7 @@ if (isset($_GET['uid']) && isset($_GET['rid'])) {
         $res['error'] = 'pay.jpの初期化に失敗しました。';
     }
     if ($pid) {
-        $plan = $db->query("SELECT amount,billing_day,trial_days,auth_days FROM t13plan WHERE rid=$rid AND id=$pid;")->fetchAll(PDO::FETCH_ASSOC);
+        $plan = $db->query("SELECT amount,billing_day,trial_days,auth_days,prorate FROM t13plan WHERE rid=$rid AND id=$pid;")->fetchAll(PDO::FETCH_ASSOC);
         if ($plan && count($plan) === 1) {
             $res['plan'] = $plan[0];
         } else {

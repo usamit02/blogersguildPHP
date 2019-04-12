@@ -17,7 +17,6 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['rid']) && isset($_GET
         $uid = htmlspecialchars($_GET['uid']);
         $ban_uid = isset($_GET['ban']) ? htmlspecialchars($_GET['ban']) : false;
         $payjp_id = $db->query("SELECT payjp_id FROM t11roompay WHERE uid='$uid' AND rid=$rid;")->fetchcolumn();
-        $error = 0;
         if (isset($_GET['ok']) && isset($payjp_id) && $payjp_id) {
             $ok_uid = htmlspecialchars($_GET['ok']);
             $trial = $db->query("SELECT trial_days FROM t01room JOIN t13plan ON t01room.id=t13plan.rid AND 
@@ -49,28 +48,44 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['rid']) && isset($_GET
             }
         }
         if ($ban_uid && isset($payjp_id) && $payjp_id) {
-            $db->beginTransaction();
-            $ps = $db->prepare('INSERT INTO t51roompaid(uid,rid,payjp_id,ban_uid,end_day) VALUES (?,?,?,?,?);');
-            $error += !$ps->execute(array($uid, $rid, $payjp_id, $ban_uid, date('Y-m-d H:i:s'))) && $ps->rowCount() !== 1;
-            $ps = $db->prepare("DELETE FROM t11roompay WHERE uid='$uid' AND rid=$rid AND payjp_id='$payjp_id';");
-            $error += !$ps->execute() && $ps->rowCount() !== 1;
-            if (!$error) {
-                try {
-                    $sub = Payjp\Subscription::retrieve($payjp_id);
-                    $sub->delete();
-                } catch (Exception $e) {
-                    $json['error'] = $e->getMessage();
+            $rs = $db->query("SELECT rid FROM t11roompay WHERE uid='$uid';");
+            while ($r = $rs->fetch()) {//削除部屋の下層に参加している部屋があれば同時に削除する
+                $parent = $r['rid'];
+                $execute = false;
+                do {//親に削除部屋があれば削除対象
+                    if ($parent === $rid) {
+                        $execute = true;
+                        break;
+                    }
+                    $parent = $db->query("SELECT parent FROM t01room WHERE id=$parent;");
+                } while ($parent);
+                if ($execute) {
+                    $db->beginTransaction();
+                    $ps = $db->prepare('INSERT INTO t51roompaid(uid,rid,payjp_id,ban_uid,end_day) VALUES (?,?,?,?,?);');
+                    $ps1 = $ps->execute(array($uid, $r['rid'], $payjp_id, $ban_uid, date('Y-m-d H:i:s'))) && $ps->rowCount() === 1;
+                    $ps = $db->prepare('DELETE FROM t11roompay WHERE uid=? AND rid=? AND payjp_id=?;');
+                    $ps2 = $ps->execute($uid, $r['rid'], $payjp_id) && $ps->rowCount() === 1;
+                    if ($ps1 && $ps2) {
+                        try {
+                            $sub = Payjp\Subscription::retrieve($payjp_id);
+                            $sub->delete();
+                        } catch (Exception $e) {
+                            $json['error'] = $e->getMessage();
+                        }
+                        if (isset($sub['id'])) {
+                            $db->commit();
+                            $json['msg'] = 'ok';
+                        } else {
+                            $db->rollBack();
+                            $json['error'] = '定額課金の削除に失敗しました。';
+                            break;
+                        }
+                    } else {
+                        $db->rollBack();
+                        $json['error'] = 'データーベースエラーのため削除できません。';
+                        break;
+                    }
                 }
-                if (isset($sub['id'])) {
-                    $db->commit();
-                    $json['msg'] = 'ok';
-                } else {
-                    $db->rollBack();
-                    $json['error'] = '定額課金の削除に失敗しました。';
-                }
-            } else {
-                $db->rollBack();
-                $json['error'] = 'データーベースエラーのため削除できません。';
             }
         } else {
             $json['error'] = 'パラメーターが不正です。';

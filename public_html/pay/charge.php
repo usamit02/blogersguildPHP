@@ -18,13 +18,6 @@ if (isset($referer)) {
         } catch (Exception $e) {
             $json['error'] = 'pay.jpの初期化に失敗しました。';
         }
-        $r = $db->query("SELECT id FROM t02user WHERE id='$uid';")->fetch();
-        if (!$r) {
-            $ps = $db->prepare('INSERT INTO t02user(id,na) VALUES (:id,:na);');
-            if (!$ps->execute(array('id' => $uid, 'na' => $na))) {
-                $json['error'] = 'データベースエラーによりユーザーの追加に失敗しました。';
-            }
-        }
         if ($sid) {//単発課金価格取得
             $amount = $db->query("SELECT pay FROM t21story WHERE rid=$rid AND id=$sid;")->fetchcolumn();
             if (!($amount > 49)) {
@@ -75,16 +68,77 @@ if (isset($referer)) {
         }
         if (!isset($json) && isset($amount)) {//単発課金
             try {
-                $result = Payjp\Charge::create(array('customer' => $customer, 'amount' => $amount, 'currency' => 'jpy'));
+                $charge = Payjp\Charge::create(array('customer' => $customer, 'amount' => $amount, 'currency' => 'jpy'));
             } catch (Exception $e) {
                 $json['error'] = "payjpの課金に失敗しました。\r\n".$e->getMessage();
             }
-            if (isset($result['id'])) {
-                $ps = $db->prepare('INSERT INTO t12storypay(uid,rid,sid,upd,payjp_id,amount) VALUES (?,?,?,?,?,?);');
-                if ($ps->execute(array($uid, $rid, $sid, date('Y-m-d H:i:s', $result['created']), $result['id'], $amount)) && $ps->rowCount() === 1) {
-                    $json['msg'] = 'charge';
+            if (isset($charge['id'])) {
+                if ($charge['captured']) {
+                    $ps = $db->prepare('INSERT INTO t12storypay(uid,rid,sid,upd,payjp_id,amount) VALUES (?,?,?,?,?,?);');
+                    if ($ps->execute(array($uid, $rid, $sid, date('Y-m-d H:i:s', $charge['created']), $charge['id'], $amount)) && $ps->rowCount() === 1) {
+                        $json['msg'] = 'charge';
+                        $parent = $rid;
+                        do {//部屋にスタッフがいなければ上層部屋のスタッフを探す
+                            $allStaffs = $db->query("SELECT uid,parent,rate,auth FROM t03staff JOIN t01room 
+                            ON t03staff.rid=t01room.id WHERE t03staff.rid=$parent;")->fetchAll(PDO::FETCH_ASSOC);
+                            if (count($allStaffs)) {
+                                break;
+                            } else {
+                                $parent = $db->query("SELECT parent FROM t01room WHERE id=$parent;")->fetchcolumn();
+                            }
+                        } while ($parent);
+                        if (count($allStaffs)) {
+                            $staffs = array_values(array_filter($allStaffs, function ($staff) {
+                                return $staff['rate'] > 0;
+                            }));
+                            if (count($staffs)) {//レート設定有の人数で分配
+                                $sumRate = 0;
+                                foreach ($staffs as $staff) {
+                                    $sumRate += $staff['rate'];
+                                }
+                                for ($j = 0; $j < count($staffs); ++$j) {
+                                    $staffs[$j]['div'] = $staffs[$j]['rate'] / $sumRate;
+                                }
+                            } else {//最高職位の人数で頭割り
+                                $auth = $allStaffs[0]['auth'];
+                                for ($j = 1; $j < count($allStaffs); ++$j) {
+                                    if ($auth < $allStaffs[$j]['auth']) {
+                                        $auth = $allStaffs[$j]['auth'];
+                                    }
+                                }
+                                $staffs = array_values(array_filter($allStaffs, function ($staff) use ($auth) {
+                                    return $staff['auth'] === $auth;
+                                }));
+                                for ($j = 0; $j < count($staffs); ++$j) {
+                                    $staffs[$j]['div'] = 1 / count($staffs);
+                                }
+                            }
+                            $db->beginTransaction();
+                            foreach ($staffs as $staff) {
+                                $p = floor($amount * $staff['div']);
+                                $ps = $db->prepare('INSERT INTO t57storydiv (rid,uid,mid,amount,billing_day) VALUES (?,?,?,?,?);');
+                                $ps1 = $ps->execute(array($rid, $staff['uid'], $uid, $p, date('Y-m-d H:i:s', $charge['created'])))
+                                || $ps->rowCount() === 1;
+                                $ps = $db->prepare('UPDATE t02user SET p=p+? WHERE id=?;');
+                                $ps2 = $ps->execute(array($p, $staff['uid'])) && $ps->rowCount() === 1;
+                                if (!($ps1 && $ps2)) {
+                                    $db->rollback();
+                                    $mail = $db->query('SELECT mail FROM t02user WHERE no=1;')->fetchcolumn();
+                                    mail($mail, 'warning from guild system', "t57storydiv insertion or t02user point update failed.check payjp data at $rid room");
+                                    break;
+                                }
+                            }
+                            $db->commit();
+                        } else {
+                            $mail = $db->query('SELECT mail FROM t02user WHERE no=1;')->fetchcolumn();
+                            $payjp = $charge['id'];
+                            mail($mail, 'warning from guild system', "sales can not divident.check payjp $payjp data at $sid row in $rid room ");
+                        }
+                    } else {
+                        $json['error'] = "データベースエラーにより支払データ挿入に失敗しました。\nC-Lifeまでお問合せください。";
+                    }
                 } else {
-                    $json['error'] = "データベースエラーにより支払データ挿入に失敗しました。\nC-Lifeまでお問合せください。";
+                    $json['error'] = "カード決済できません。\r\n".$charge['failure_message'];
                 }
             } else {
                 $json['error'] = "payjpの課金処理に失敗しました。\nC-Lifeまでお問合せください。";
@@ -109,6 +163,30 @@ if (isset($referer)) {
                 $sub['id'], $active, )) && $ps->rowCount() === 1) {
                     $json['msg'] = 'plan';
                     $json['plan'] = $plan[0]['auth_days'];
+                    if ($sub['status'] === 'trial' && $plan[0]['auth_days'] > 0) {//要審査
+                        $parent = $rid;
+                        do {//部屋にマネージャー職以上のスタッフがいなければ上層部屋のスタッフを探す
+                            $staffs = $db->query("SELECT uid,parent,mail,t01room.na AS room FROM t03staff 
+                            JOIN t01room ON t03staff.rid=t01room.id JOIN t02user ON t03staff.uid=t02user.id
+                            WHERE t03staff.rid=$parent AND t03staff.auth>=200;")->fetchAll(PDO::FETCH_ASSOC);
+                            if (count($staffs)) {
+                                break;
+                            } else {
+                                $parent = $db->query("SELECT parent FROM t01room WHERE id=$parent;")->fetchcolumn();
+                            }
+                        } while ($parent);
+                        $limitDay = date('n月j日', strtotime(date('Y-m-d', $sub['created']).' +'.$plan[0]['auth_days'].'days'));
+                        foreach ($staffs as $staff) {
+                            $uno = $db->query("SELECT no FROM t02user WHERE id='$uid';")->fetchcolumn();
+                            if ($staff['mail']) {
+                                $room = $staff['room'];
+                                mb_send_mail($staff['mail'],'ギルドシステムよりお知らせ',
+                               "<a href='https://$hpadress/home/room/$rid' target='_blank'>$room</a>".
+                               'に'."<a href='https://$hpadress/detail/$uno' target='_blank'>$na</a>".
+                               "から参加申込がありました。\r\n".$limitDay.'までに加入審査してください。');
+                            }
+                        }
+                    }
                 } else {
                     $json['error'] = "データベースエラーによりルーム支払データ挿入に失敗しました。\nC-Lifeまでお問合せください。";
                 }

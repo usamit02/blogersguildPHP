@@ -21,18 +21,12 @@ function dayDiff($from, $to)
 {
     return (strtotime(date('Y-m-d', strtotime($to) - strtotime($from))) - strtotime('1970-01-01')) / 86400;
 }
-function staff($rid, $db)
+function processend($msg)
 {
-    global $allStaffs;
-    $r = $db->query("SELECT uid,auth,rate,parent FROM t03staff JOIN t01room ON t03staff.rid=t01room.id 
-   WHERE t03staff.rid=$rid;")->fetchAll(PDO::FETCH_ASSOC);
-    if (count($r)) {
-        $allStaffs = $r;
-    } else {
-        if ($r['parent']) {
-            staff($r['parent'], $db);
-        }
-    }
+    global $db;
+    $mail = $db->query('SELECT mail FROM t02user WHERE no=1;')->fetchcolumn();
+    mail($mail, 'cron of guild system', $msg);
+    die($msg);
 }
 require_once __DIR__.'/../sys/dbinit.php';
 require_once __DIR__.'/payjp/init.php';
@@ -40,7 +34,7 @@ require_once __DIR__.'/payinit.php';
 try {
     Payjp\Payjp::setApiKey($paySecret);
 } catch (Exception $e) {
-    die('fail to initialize pay.jp');
+    processend('fail to initialize pay.jp');
 }
 $today = date('Y-m-d');
 $upd = $db->query('SELECT MAX(upd) AS upd FROM t11roompay;')->fetchcolumn();
@@ -56,14 +50,14 @@ while ($r = $rs->fetch()) {
         $sub = Payjp\Subscription::retrieve($r['payjp_id']);
     } catch (Exception $e) {
         $db->rollback();
-        die($e->getMessage());
+        processend($e->getMessage());
     }
     $active = $sub['status'] === 'active' ? 1 : 0;
     $ps = $db->prepare('UPDATE t11roompay SET upd=?,start_day=?,end_day=?,active=? WHERE payjp_id=?;');
     if (!$ps->execute(array(date('Y-m-d H:i:s'), date('Y-m-d', $sub['current_period_start']),
     date('Y-m-d', $sub['current_period_end']), $active, $r['payjp_id'], )) || $ps->rowCount() !== 1) {
         $db->rollBack();
-        die('mysql update error');
+        processend('mysql update error');
     }
 }
 $db->commit();
@@ -78,8 +72,16 @@ while (strtotime($xday) < strtotime($today)) {//start_dayに課金した定額�
     ON t11roompay.rid=t13plan.rid AND t11roompay.plan=t13plan.id WHERE start_day='$xday' AND active=1;");
     $db->beginTransaction();
     while ($r = $rs->fetch()) {
-        $allStaffs = [];
-        staff($r['rid'], $db);
+        $parent = $r['rid'];
+        do {//部屋にスタッフがいなければ上層部屋のスタッフを探す
+            $allStaffs = $db->query("SELECT uid,auth,rate,parent FROM t03staff JOIN t01room 
+            ON t03staff.rid=t01room.id WHERE t03staff.rid=$parent;")->fetchAll(PDO::FETCH_ASSOC);
+            if (count($allStaffs)) {
+                break;
+            } else {
+                $parent = $db->query("SELECT parent FROM t01room WHERE id=$parent;")->fetchcolumn();
+            }
+        } while ($parent);
         if (count($allStaffs)) {
             $staffs = array_values(array_filter($allStaffs, function ($staff) {
                 return $staff['rate'] > 0;
@@ -114,11 +116,14 @@ while (strtotime($xday) < strtotime($today)) {//start_dayに課金した定額�
                 $amount = $r['amount'];
             }
             foreach ($staffs as $staff) {
+                $p = floor($amount * $staff['div']);
                 $ps = $db->prepare('INSERT INTO t56roomdiv (rid,uid,mid,amount,billing_day,upd) VALUES (?,?,?,?,?,?);');
-                if (!$ps->execute(array($r['rid'], $staff['uid'], $r['uid'],
-                floor($amount * $staff['div']), $xday, date('Y-m-d H:i:s'), )) || $ps->rowCount() !== 1) {
+                $ps1 = $ps->execute(array($r['rid'], $staff['uid'], $r['uid'], $p, $xday, date('Y-m-d H:i:s'))) && $ps->rowCount() === 1;
+                $ps = $db->prepare('UPDATE t02user SET p=p+? WHERE id=?;');
+                $ps2 = $ps->execute(array($p, $staff['uid'])) && $ps->rowCount() === 1;
+                if (!($ps1 && $ps2)) {
                     $db->rollBack();
-                    die("division amount on $xday due to mysql insert error");
+                    processend("division amount on $xday due to mysql insert or update error");
                 }
             }
         }
@@ -126,5 +131,5 @@ while (strtotime($xday) < strtotime($today)) {//start_dayに課金した定額�
     $db->commit();
     $xday = date('Y-m-d', strtotime("$xday +1 day"));
 }
-echo"sync with payjp and division amount process on $today was successful";
+processend("sync with payjp and division amount process on $today was successful");
 //echo date('d', strtotime('2019-03-1 -1 month'));
