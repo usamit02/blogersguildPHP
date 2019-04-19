@@ -1,8 +1,8 @@
 <?php
 
 header('Access-Control-Allow-Origin: *');
-$referer = $_SERVER['HTTP_REFERER'];
-if (isset($referer) && isset($_GET['uid']) && isset($_GET['ban'])) {
+$referer = $_SERVER['HTTP_REFERER']; //uidならユーザーBAN,ridなら部屋解散
+if (isset($referer) && (isset($_GET['uid']) || isset($_GET['rid'])) && isset($_GET['ban'])) {
     require_once __DIR__.'/payjp/init.php';
     require_once __DIR__.'/payinit.php';
     try {
@@ -13,22 +13,25 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['ban'])) {
     if (!isset($json)) {
         require_once __DIR__.'/../sys/dbinit.php';
         $url = parse_url($referer);
-        $uid = htmlspecialchars($_GET['uid']);
+        $uid = isset($_GET['uid']) ? htmlspecialchars($_GET['uid']) : false;
+        $rid = isset($_GET['rid']) ? htmlspecialchars($_GET['rid']) : false;
         $ban = htmlspecialchars($_GET['ban']);
-        $rs = $db->query("SELECT payjp_id,rid FROM t11roompay WHERE uid='$uid';");
-        $error = 0;
+        $sql = $uid ? "SELECT payjp_id,rid FROM t11roompay WHERE uid='$uid';" :
+                    "SELECT payjp_id,uid FROM t11roompay WHERE rid=$rid;";
+        $rs = $db->query($sql);
         while ($r = $rs->fetch()) {
             $payjp_id = $r['payjp_id'];
-            $rid = $r['rid'];
+            $r_id = $rid ? $rid : $r['rid'];
+            $u_id = $uid ? $uid : $r['uid'];
             $db->beginTransaction();
             $ps = $db->prepare('INSERT INTO t51roompaid(uid,rid,payjp_id,ban_uid,end_day) VALUES (?,?,?,?,?);');
-            $error += !$ps->execute(array($uid, $rid, $payjp_id, $ban, date('Y-m-d H:i:s'))) && $ps->rowCount() !== 1;
-            $ps = $db->prepare('DELETE FROM t11roompay WHERE uid=? AND rid=?;');
-            $error += !$ps->execute(array($uid, $rid)) && $ps->rowCount() !== 1;
-            if (!$error) {
+            $ps1 = $ps->execute(array($u_id, $r_id, $payjp_id, $ban, date('Y-m-d H:i:s'))) && $ps->rowCount() === 1;
+            $ps = $db->prepare('DELETE FROM t11roompay WHERE uid=? AND rid=? AND payjp_id=?;');
+            $ps2 = $ps->execute(array($u_id, $r_id, $payjp_id)) && $ps->rowCount() === 1;
+            if ($ps1 && $ps2) {
                 try {
                     $sub = Payjp\Subscription::retrieve($payjp_id);
-                    $sub->delete();
+                    $sub->cancel();
                 } catch (Exception $e) {
                     $json['error'] = $e->getMessage();
                 }
@@ -42,9 +45,11 @@ if (isset($referer) && isset($_GET['uid']) && isset($_GET['ban'])) {
                 $db->rollBack();
                 $json['error'] = 'データーベースエラーのため削除できません。';
             }
-            $error += isset($json) ? 1 : 0;
+            if (isset($json)) {
+                break;
+            }
         }
-        if (!isset($json) && !$error) {
+        if (!isset($json)) {
             $json['msg'] = 'ok';
         }
     } else {

@@ -52,10 +52,10 @@ while ($r = $rs->fetch()) {
         $db->rollback();
         processend($e->getMessage());
     }
-    $active = $sub['status'] === 'active' ? 1 : 0;
-    $ps = $db->prepare('UPDATE t11roompay SET upd=?,start_day=?,end_day=?,active=? WHERE payjp_id=?;');
+    $active = $sub['status'] === 'active' ? 1 : 0; //課題：引き落とし不能（status=???）の場合はactive=0でなくDELETE&roompaidへ移行すべき、ゴミレコードになる。
+    $ps = $db->prepare('UPDATE t11roompay SET upd=?,start_day=?,end_day=?,active=?,status=? WHERE payjp_id=?;');
     if (!$ps->execute(array(date('Y-m-d H:i:s'), date('Y-m-d', $sub['current_period_start']),
-    date('Y-m-d', $sub['current_period_end']), $active, $r['payjp_id'], )) || $ps->rowCount() !== 1) {
+    date('Y-m-d', $sub['current_period_end']), $active, $sub['status'], $r['payjp_id'], )) || $ps->rowCount() !== 1) {
         $db->rollBack();
         processend('mysql update error');
     }

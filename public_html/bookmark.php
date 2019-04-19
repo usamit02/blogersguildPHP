@@ -1,9 +1,9 @@
 <?php
-
+header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
-$uid = $_GET['uid'];
-$rid = intval($_GET['rid']);
-$bookmark = $_GET['bookmark'];
+$uid =  htmlspecialchars($_GET['uid']);
+$rid = intval(htmlspecialchars($_GET['rid']));
+$bookmark =  htmlspecialchars($_GET['bookmark']);
 if ($bookmark === '1') {
     $ps = $db->prepare('DELETE FROM t17bookmark WHERE uid=? AND rid=?;');
     if ($ps->execute(array($uid, $rid))) {
@@ -19,5 +19,4 @@ if ($bookmark === '1') {
         $json['msg'] = 'データベースエラーによりブックマークの追加に失敗しました。';
     }
 }
-header('Access-Control-Allow-Origin: *');
 echo json_encode($json);

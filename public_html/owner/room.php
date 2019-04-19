@@ -39,7 +39,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
                 if (!$error && $res['msg'] === 'ok') {
                     try {
                         $sub = Payjp\Subscription::retrieve($r['payjp_id']);
-                        $sub->delete();
+                        $sub->cancel();
                     } catch (Exception $e) {
                         $res['msg'] = $e->getMessage();
                     }
@@ -138,7 +138,7 @@ if (isset($_GET['sql']) && (isset($_SERVER['HTTP_REFERER']))) {
     }
 } elseif (isset($_GET['uid'])) {
     $uid = htmlspecialchars($_GET['uid']);
-    $sql = "SELECT t01room.id AS id,na,discription,parent,t01room.idx AS idx,chat,story,auth,plan,prorate,amount,billing_day,
+    $sql = "SELECT t01room.id AS id,na,discription,parent,t01room.idx AS idx,chat,story,shut,auth,plan,prorate,amount,billing_day,
     trial_days,auth_days FROM t01room LEFT JOIN t03staff ON t01room.id = t03staff.rid AND t03staff.uid='$uid' 
     LEFT JOIN t13plan ON t01room.id = t13plan.rid AND t01room.plan = t13plan.id ORDER BY t01room.idx;";
     $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);

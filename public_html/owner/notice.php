@@ -10,19 +10,36 @@ $end = isset($_POST['day']) ? htmlspecialchars(date($_POST['day'])) : date('Y-m-
 $start = date('Y-m-d', strtotime('-1 month', strtotime($end)));
 $inPayRooms = '';
 $inRooms = '';
+$res = [];
+$img = '<img style="vertical-align: middle;width: 25px;height: 25px;border-radius: 50%;" src="';
 foreach ($rooms as $key => $room) {
     $inRooms .= $room['id'].',';
     if ($room['plan']) {
         $inPayRooms .= $room['id'].',';
     }
 }
-if (!strlen($inRooms)) {
+require_once __DIR__.'/../sys/dbinit.php';
+if(strlen($inRooms)){
+    $inRooms = substr($inRooms, 0, strlen($inRooms) - 1);
+    $sql = "SELECT t02user1.avatar AS avatar1,t02user1.na AS na1,t36tip.tip_day AS tip_day,t02user2.avatar AS avatar2,
+    t02user2.na AS na2,t01room.na AS room,t36tip.upd AS upd,t36tip.rid AS rid FROM t36tip JOIN t01room 
+    ON t36tip.rid=t01room.id LEFT JOIN t02user AS t02user1 ON t36tip.uid=t02user1.id 
+    LEFT JOIN t02user AS t02user2 ON t36tip.tip_uid=t02user2.id 
+    WHERE tip_day>='$start' AND tip_day<='$end' AND t36tip.rid IN ($inRooms);";
+    $rs = $db->query($sql);
+    while ($r = $rs->fetch()) {
+        $re['day'] = $r['tip_day'];
+        $re['room'] = $r['room'];
+        $rid=$r['rid'];
+        $upd=strtotime($r['upd']);
+        $re['msg'] = $img.$r['avatar1'].'">'.$r['na1'].'さんの'.
+        "<a href='$hpadress/home/room/$rid/$upd 'target='_brank'>".'投稿</a>を';
+        $re['msg'] .= $img.$r['avatar2'].'">'.$r['na2'].'さんが通報';
+        $res[] = $re;
+    }
+}else{
     return;
 }
-$res = [];
-$img = '<img style="vertical-align: middle;width: 25px;height: 25px;border-radius: 50%;" src="';
-$inRooms = substr($inRooms, 0, strlen($inRooms) - 1);
-require_once __DIR__.'/../sys/dbinit.php';
 if (strlen($inPayRooms)) {
     $inPayRooms = substr($inPayRooms, 0, strlen($inPayRooms) - 1);
     $nextDay = date('Y-m-d', strtotime('+1day'));
@@ -89,7 +106,7 @@ if (strlen($inPayRooms)) {
         $re['msg'] = $img.$r['avatar2'].'">'.$r['na2'].'の会費を'.$img.$r['avatar1'].'">'.$r['na1'].'に'.
         $r['amount'].'円配当';
         $res[] = $re;
-    }
+    }    
 }
 if (count($res)) {
     foreach ($res as $key => $val) {
