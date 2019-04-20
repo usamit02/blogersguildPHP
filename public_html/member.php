@@ -2,11 +2,16 @@
 
 header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/sys/dbinit.php';
-if (isset($_GET['search'])) {
+if (isset($_GET['search'])) {//検索ボックスからのサーチ
     $x = htmlspecialchars($_GET['search']);
-    $sql = "SELECT * FROM t02user WHERE na like '%$x%' LIMIT 50;";
+    $sql = "SELECT id,na,avatar,upd,rev,no FROM t02user WHERE na like '%$x%' LIMIT 50;";
     $res = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC);
-} elseif (isset($_GET['rid'])) {
+}else if(isset($_GET['find'])){
+    $rid = intval(htmlspecialchars($_GET['find']));
+    $uid = htmlspecialchars($_GET['uid']);
+    
+    
+}elseif (isset($_GET['rid'])) {//詳細表示
     $rid = intval(htmlspecialchars($_GET['rid']));
     $uid = isset($_GET['uid']) ? htmlspecialchars($_GET['uid']) : '';
     $authIn = ''; //roomとそのparents
@@ -47,7 +52,7 @@ if (isset($_GET['search'])) {
         $r['payrid'] = count($pays) ? $payrid : 0;
         $res[] = $r;
     }
-} elseif (isset($_GET['uid']) && isset($_GET['mid'])) {
+} elseif (isset($_GET['uid']) && isset($_GET['mid'])) {//メンバーからの通知をブロックしているかどうか
     $uid = htmlspecialchars($_GET['uid']);
     $mid = htmlspecialchars($_GET['mid']);
     if (isset($_GET['block'])) {

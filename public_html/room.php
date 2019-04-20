@@ -42,6 +42,35 @@ if (isset($_GET['csd'])) {//既読カーソルを記録
     $where = substr($where, 0, strlen($where) - 1).')';
     $res = $db->query("SELECT rid AS id,csd,upd FROM t14roomcursor LEFT JOIN t01room on t14roomcursor.rid=t01room.id 
     WHERE uid='$uid' AND $where;")->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
+} else if(isset($_GET['mid'])){//検索したメンバーがいる部屋を探す
+    $mid = htmlspecialchars($_GET['mid']);
+    $sql = "SELECT t01room.id AS id0,t01room.id AS id,t01room.na AS na,parent,t03staff.auth AS auth,
+    IF(t01room.plan,IF(ISNULL(active),10,NOT(active)),0) AS `lock`,0 AS folder,t01room.plan AS plan FROM t01room 
+    LEFT JOIN t11roompay ON t01room.id=t11roompay.rid AND t11roompay.uid='$uid' 
+    LEFT JOIN t03staff ON t01room.id=t03staff.rid AND t03staff.uid='$uid' WHERE shut<100;";
+    $rooms = $db->query($sql)->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
+    $allrooms=$rooms;
+    setRooms(1);
+    if(isset($rooms[$rid])){
+        $res=$rid;
+    }else{
+        $parent=$allrooms[$rid]['parent'];
+        do{
+            $targets=array_filter($rooms,function($room) use ($parent){
+                return $room['id']===$parent;
+            });
+            if(count($targets)){
+                $res=$target;
+                break;
+            }else{
+                $parentRooms=array_filter($allrooms,function($room) use ($parent){
+                    return $room['id']===$parent;
+                });           
+                $parent=$parentRooms[0]['parent'];
+            }
+
+        }while($parent);
+    }
 } else {//部屋データ取得
     $sql = "SELECT t01room.id AS id0,t01room.id AS id,t01room.na AS na,discription,parent,t01room.plan AS plan,
     0 AS folder,chat,story,csd,t03staff.auth AS auth,t13plan.amount AS amount,t02user.no AS no,shut,
