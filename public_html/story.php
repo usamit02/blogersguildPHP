@@ -31,6 +31,7 @@ foreach ($storys as $story) {
     }
 }
 $res['upd'] = $db->query("SELECT MAX(upd) as upd,MAX(rev) as rev FROM t21story WHERE rid=$rid;")->fetch();
+$res['msg']='ok';
 echo json_encode($res);
 
 /*

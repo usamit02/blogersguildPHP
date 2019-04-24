@@ -8,26 +8,30 @@ if (isset($_GET['uid']) && isset($_GET['na']) && isset($_GET['avatar'])) {
     $error = 0;
     $user = $db->query("SELECT * FROM t02user WHERE id='$id';")->fetch(PDO::FETCH_ASSOC);
     if ($user) {
-        if ($user['na'] === $na && $user['avatar'] === $avatar) {
+        if($user['black']){
+            $res['msg']="アカウントは停止されています。";
+        }else if ($user['na'] === $na && $user['avatar'] === $avatar) {
             $ps = $db->prepare('UPDATE t02user SET rev=:rev WHERE id=:id;');
-            $error += $ps->execute(array('id' => $id, 'rev' => date('Y-m-d H:i:s'))) && $ps->rowCount() !== 1;
+            $error += !$ps->execute(array('id' => $id, 'rev' => date('Y-m-d H:i:s'))) || $ps->rowCount() !== 1;
         } else {
             $ps = $db->prepare('UPDATE t02user SET na=:na,avatar=:avatar,rev=:rev WHERE id=:id;');
-            $error += $ps->execute(array('id' => $id, 'na' => $na, 'avatar' => $avatar, 'rev' => date('Y-m-d H:i:s'))) && $ps->rowCount() !== 1;
+            $error += !$ps->execute(array('id' => $id, 'na' => $na, 'avatar' => $avatar, 'rev' => date('Y-m-d H:i:s'))) || $ps->rowCount() !== 1;
             $user['na'] = $na;
             $user['avatar'] = $avatar;
         }
     } else {
-        $no = $db->query('SELECT MAX(id)+1 FROM t02user;')->fetchcolumn();
+        $no = $db->query('SELECT MAX(no)+1 FROM t02user;')->fetchcolumn();
         $ps = $db->prepare('INSERT INTO t02user (id,no,na,avatar,upd,p) VALUES (:id,:no,:na,:avatar,:upd,:p);');
         $user = array('id' => $id, 'no' => $no, 'na' => $na, 'avatar' => $avatar, 'upd' => date('Y-m-d H:i:s'), 'p' => 0);
-        $error += $ps->execute($user) && $ps->rowCount() !== 1;
+        $error += !$ps->execute($user) || $ps->rowCount() !== 1;
     }
-    if ($error) {
-        $res['msg'] = 'データベースエラーによりログイン情報の保存に失敗しました。';
-    } else {
-        $res['user'] = $user;
-        $res['msg'] = 'ok';
+    if(!isset($res['msg'])){
+        if ($error) {
+            $res['msg'] = 'データベースエラーによりログイン情報の保存に失敗しました。';
+        } else {
+            $res['user'] = $user;
+            $res['msg'] = 'ok';
+        }
     }
 } elseif (isset($_GET['no'])) {
     $no = htmlspecialchars($_GET['no']);
@@ -43,6 +47,7 @@ if (isset($_GET['uid']) && isset($_GET['na']) && isset($_GET['avatar'])) {
         JOIN t01room ON t11roompay.rid=t01room.id JOIN mt03auth ON active=mt03auth.id 
         WHERE t11roompay.uid='$uid' ORDER BY t11roompay.rid;")->fetchAll(PDO::FETCH_ASSOC);
         $res['links'] = $db->query("SELECT idx,media,na,url FROM t32link WHERE uid='$uid' ORDER BY idx;")->fetchAll(PDO::FETCH_ASSOC);
+        $res['msg']='ok';
     } else {
         $res['msg'] = 'データベースエラーによりユーザー読み込みに失敗しました。';
     }

@@ -22,6 +22,7 @@ if (isset($_GET['notify']) && isset($_GET['unblocks'])) {//設定保存、ブロ
     if ($error) {
         $res['msg'] .= $error."件のブロック解除に失敗しました。\r\n";
     }
+    $res['msg'] = $res['msg'] ? $res['msg'] : 'ok';
 } elseif (isset($_GET['rids'])) {//新着メッセージ判定素材
     $rids = json_decode(htmlspecialchars($_GET['rids']));
     $where = 'rid IN (';
@@ -33,7 +34,7 @@ if (isset($_GET['notify']) && isset($_GET['unblocks'])) {//設定保存、ブロ
     WHERE uid='$uid' AND $where;")->fetchAll(PDO::FETCH_ASSOC | PDO::FETCH_UNIQUE);
 } else {//通知設定取得
     $res['notify'] = $db->query("SELECT mail,direct,mention FROM t02user WHERE id='$uid';")->fetch(PDO::FETCH_ASSOC);
-    $blocks = $db->query("SELECT id,na,avatar FROM t02user JOIN t15block ON t02user.id=t15block.mid WHERE uid='$uid';")->fetchAll(PDO::FETCH_ASSOC);
-    $res['blocks'] = $blocks;
+    $res['blocks'] = $db->query("SELECT id,na,avatar FROM t02user JOIN t15block ON t02user.id=t15block.mid WHERE uid='$uid';")->fetchAll(PDO::FETCH_ASSOC);
+    $res['msg']='ok';
 }
 echo json_encode($res);

@@ -14,8 +14,7 @@ function setAuth($parentKey)
 }
 header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/../sys/dbinit.php';
-if (isset($_GET['room'])) {
-} elseif (isset($_GET['uid']) && isset($_GET['ban'])) {
+if (isset($_GET['uid']) && isset($_GET['ban'])) {
     $uid = htmlspecialchars($_GET['uid']);
     $ban = htmlspecialchars($_GET['ban']);
     $sql = "SELECT t01room.id AS id,t01room.na AS na,parent,auth,plan FROM t01room 
@@ -44,10 +43,12 @@ if (isset($_GET['room'])) {
             $payRooms = array_merge($payRooms, $room);
         }
     }
+    $res['msg']="ok";
     $res['staffrooms'] = $staffRooms; //役員になってる部屋全て
     $res['bossrooms'] = $bossRooms; //banする人の人事権が及ばない役員になっている部屋
     $res['payrooms'] = $payRooms; //banする人の人事権が及ばない会員になっている部屋
 } else {
+    $res['msg']="ng";
     $res['error'] = '不正なアクセスです。';
 }
 echo json_encode($res);

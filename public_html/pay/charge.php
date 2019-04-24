@@ -31,10 +31,12 @@ if (isset($referer)) {
             }
         }
         if (!isset($json)) {//顧客情報の読込または作成
-            try {
-                $customer = Payjp\Customer::retrieve($uid);
-            } catch (Exception $e) {
-                $json['error'] = 'pay.jpの顧客情報読み込みに失敗しました。';
+            if ($db->query("SELECT payjp FROM t02user WHERE id='$uid';")->fetchcolumn()) {
+                try {
+                    $customer = Payjp\Customer::retrieve($uid);
+                } catch (Exception $e) {
+                    $json['error'] = 'pay.jpの顧客情報読み込みに失敗しました。';
+                }
             }
             if (!isset($customer['id'])) {
                 if ($token) {
@@ -45,6 +47,16 @@ if (isset($referer)) {
                     }
                     if (isset($customer['id'])) {
                         $uid = $customer['id'];
+                        $ps = $db->prepare('UPDATE t02user SET payjp=1 WHERE uid=?;');
+                        if (!$ps->execute(array($uid)) || $ps->rowCount() !== 1) {
+                            try {
+                                $customer = Payjp\Customer::retrieve($uid);
+                                $customer->delete();
+                            } catch (Exception $e) {
+                                $json['error'] = 'データーベースエラーによる顧客作成の取消に失敗しました。';
+                            }
+                            $json['error'] = 'データーベースエラーにより顧客作成を取消しました。';
+                        }
                     } else {
                         $json['error'] = 'pay.jpの顧客作成に失敗しました。';
                     }
@@ -76,7 +88,8 @@ if (isset($referer)) {
                 if ($charge['captured']) {
                     $ps = $db->prepare('INSERT INTO t12storypay(uid,rid,sid,upd,payjp_id,amount) VALUES (?,?,?,?,?,?);');
                     if ($ps->execute(array($uid, $rid, $sid, date('Y-m-d H:i:s', $charge['created']), $charge['id'], $amount)) && $ps->rowCount() === 1) {
-                        $json['msg'] = 'charge';
+                        $json['msg'] = 'ok';
+                        $json['typ'] = 'charge';
                         $parent = $rid;
                         do {//部屋にスタッフがいなければ上層部屋のスタッフを探す
                             $allStaffs = $db->query("SELECT uid,parent,rate,auth FROM t03staff JOIN t01room 
@@ -161,7 +174,8 @@ if (isset($referer)) {
                 if ($ps->execute(array($uid, $rid, $plan[0]['plan'], date('Y-m-d H:i:s', $sub['created']),
                 date('Y-m-d', $sub['current_period_start']), date('Y-m-d', $sub['current_period_end']),
                 $sub['id'], $active, )) && $ps->rowCount() === 1) {
-                    $json['msg'] = 'plan';
+                    $json['msg'] ='ok';
+                    $json['typ'] = 'plan';
                     $json['plan'] = $plan[0]['auth_days'];
                     if ($sub['status'] === 'trial' && $plan[0]['auth_days'] > 0) {//要審査
                         $parent = $rid;

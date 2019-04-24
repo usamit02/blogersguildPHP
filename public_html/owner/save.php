@@ -4,10 +4,10 @@ header('Access-Control-Allow-Origin: *');
 require_once __DIR__.'/../sys/dbinit.php';
 $error = 0;
 if (isset($_GET['sql'])) {
-    $sql = explode(";\n", $_GET['sql']);
+    $sqls = explode(";\n", $_GET['sql']);
     $db->beginTransaction();
-    foreach ($sql as $s) {
-        $ps = $db->prepare($s);
+    foreach ($sqls as $sql) {
+        $ps = $db->prepare($sql);
         $error += (($ps->execute()) && $ps->rowCount()) ? 0 : 1;
     }
     if ($error) {

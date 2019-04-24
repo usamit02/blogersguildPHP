@@ -21,10 +21,12 @@ if (isset($_GET['uid']) && isset($_GET['rid'])) {
             $res['error'] = '該当するプランがありません。';
         }
     }
-    try {
-        $customer = Payjp\Customer::retrieve($uid);
-    } catch (Exception $e) {
-        $res['error'] = 'pay.jpの顧客情報取得に失敗しました。\n' + $e->getMessage();
+    if($db->query("SELECT payjp FROM t02user WHERE id='$uid';")->fetchcolumn()){
+        try {
+            $customer = Payjp\Customer::retrieve($uid);
+        } catch (Exception $e) {
+            $res['error'] = 'pay.jpの顧客情報取得に失敗しました。\n' + $e->getMessage();
+        }
     }
     if (isset($customer['id'])) {
         if (is_null($customer['default_card'])) {
@@ -42,9 +44,10 @@ if (isset($_GET['uid']) && isset($_GET['rid'])) {
             }
         }
     } else {
-        $res['error'] = 'pay.jpの顧客情報が存在しません。';
+        $res['card']['last4'] = 0;
     }
 } else {
     $res['error'] = 'パラメーターが不足しています。';
 }
+$res['msg']=isset($res['error'])?"プランの読込に失敗しました。\r\n".$res['error']:"ok";
 echo json_encode($res);

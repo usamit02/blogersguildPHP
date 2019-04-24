@@ -58,4 +58,7 @@ if (isset($referer) && (isset($_GET['uid']) || isset($_GET['rid'])) && isset($_G
 } else {
     $json['error'] = '不適切なアクセス手順です。';
 }
+if(isset($json['error'])){
+    $json['msg']="退会処理失敗のためBANできませんでした。\r\n".$json['error'];
+}
 echo json_encode($json);
