@@ -37,12 +37,12 @@ if (isset($_GET['uid']) && isset($_GET['na']) && isset($_GET['avatar'])) {
     $no = htmlspecialchars($_GET['no']);
     $user = $db->query("SELECT * FROM t02user WHERE no=$no;")->fetch(PDO::FETCH_ASSOC);
     if ($user) {
-        $res['user'] = $user;
+        $res = $user;
         $uid = $user['id'];
-        $res['staff'] = $db->query("SELECT auth,class,t01room.na AS room,t03staff.rid AS rid,t03staff.upd AS upd 
+        $res['staffs'] = $db->query("SELECT auth,class,t01room.na AS room,t03staff.rid AS rid,t03staff.upd AS upd 
         FROM t03staff JOIN t01room ON t03staff.rid=t01room.id JOIN mt03auth ON t03staff.auth=mt03auth.id 
         WHERE t03staff.uid='$uid' ORDER BY t03staff.rid;")->fetchAll(PDO::FETCH_ASSOC);
-        $res['member'] = $db->query("SELECT active AS auth,class,t01room.na AS room,
+        $res['members'] = $db->query("SELECT active AS auth,class,t01room.na AS room,
         t11roompay.rid AS rid, t11roompay.created AS upd FROM t11roompay 
         JOIN t01room ON t11roompay.rid=t01room.id JOIN mt03auth ON active=mt03auth.id 
         WHERE t11roompay.uid='$uid' ORDER BY t11roompay.rid;")->fetchAll(PDO::FETCH_ASSOC);

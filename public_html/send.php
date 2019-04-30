@@ -23,7 +23,8 @@ if ($rid < 1000000000 || !$mid) {
             mb_send_mail($r['mail'], $na.'の書き込み'.$subject, $txt);
         }
     }
-} else {
+} else {//ダイレクトやメンションがあったときメールを送る、詳細通知設定ができるようになったら稼働
+    /*
     $block = $db->query("SELECT mid FROM t15block WHERE uid='$mid' AND mid='$uid';")->fetchColumn();
     if (!$block) {
         if ($rid < 1000000000) {
@@ -38,5 +39,6 @@ if ($rid < 1000000000 || !$mid) {
             mb_send_mail($mail, $na.'から'.$subject, $txt);
         }
     }
+    */
 }
 echo json_encode($res);

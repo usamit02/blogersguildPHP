@@ -55,7 +55,7 @@ if (isset($_GET['search'])) {//検索ボックスからのサーチ
         $payRooms = [];
     }
     $staffRooms = $db->query("SELECT uid,rid,auth,idx FROM t03staff WHERE rid IN($authIn)$and ORDER BY auth DESC,idx;")->fetchAll(PDO::FETCH_ASSOC);
-    $res['member'] = [];
+    $res['members'] = [];
     $rs = $db->query($sql);
     while ($r = $rs->fetch(PDO::FETCH_ASSOC)) {
         $staffs = array_values(array_filter($staffRooms, function ($room) use ($r) {return $room['uid'] === $r['id']; }));
@@ -69,7 +69,7 @@ if (isset($_GET['search'])) {//検索ボックスからのサーチ
             $r['auth']=null;
         }
         $r['payrid'] = count($pays) ? $payrid : 0;
-        $res['member'][] = $r;
+        $res['members'][] = $r;
     }
 } elseif (isset($_GET['uid']) && isset($_GET['mid'])) {//メンバーからの通知をブロックしているかどうか
     $uid = htmlspecialchars($_GET['uid']);
